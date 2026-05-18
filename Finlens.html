@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinLens — Financial Analysis Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@200;400;500;600;700;900&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.1/jspdf.plugin.autotable.min.js"></script>
+    <style>
+        :root{--bg-primary:#f3f4f8;--bg-secondary:#ffffff;--bg-card:#ffffff;--bg-card-hover:#f0f4f8;--border:#e2e8f0;--text-primary:#1a202c;--text-secondary:#64748b;--accent-emerald:#059669;--accent-emerald-dim:rgba(5,150,105,0.10);--accent-gold:#d97706;--accent-gold-dim:rgba(217,119,6,0.10);--accent-rose:#dc2626;--accent-rose-dim:rgba(220,38,38,0.10);--accent-sky:#0284c7;--accent-sky-dim:rgba(2,132,199,0.10)}
+        *{margin:0;padding:0;box-sizing:border-box}body{font-family:'DM Sans',sans-serif;background:var(--bg-primary);color:var(--text-primary);overflow-x:hidden}h1,h2,h3,h4,h5,h6{font-family:'Space Grotesk',sans-serif}
+        ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:#f1f5f9}::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}::-webkit-scrollbar-thumb:hover{background:#94a3b8}
+        .sidebar{width:280px;height:100vh;background:var(--bg-secondary);border-right:1px solid var(--border);position:fixed;left:0;top:0;z-index:50;transition:transform .35s,width .35s;overflow-y:auto;scroll-behavior:smooth;display:flex;flex-direction:column;scrollbar-width:thin;scrollbar-color:#94a3b8 #e2e8f0}.sidebar::-webkit-scrollbar{width:10px}.sidebar::-webkit-scrollbar-track{background:#e8ecf1;border-radius:5px}.sidebar::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#94a3b8,#64748b);border-radius:5px;min-height:50px;border:2px solid #e8ecf1}.sidebar::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,#64748b,#475569)}.sidebar nav{flex:1;padding-bottom:8px}
+        .nav-item{display:flex;align-items:center;gap:12px;padding:12px 20px;color:var(--text-secondary);cursor:pointer;border-radius:10px;margin:2px 12px;transition:all .2s;font-size:14px;font-weight:500;border-left:3px solid transparent}
+        .nav-item:hover{background:var(--bg-card-hover);color:var(--text-primary);border-left:3px solid var(--accent-emerald);padding-left:17px}.nav-item.active{background:var(--accent-emerald-dim);color:var(--accent-emerald);border-left:3px solid var(--accent-emerald);padding-left:17px}
+        .main-content{margin-left:280px;min-height:100vh;transition:margin-left .35s}
+        .card{background:var(--bg-card);border:1px solid var(--border);border-radius:16px;padding:24px;transition:all .3s;box-shadow:0 1px 3px rgba(0,0,0,.06)}.card:hover{border-color:#cbd5e1;box-shadow:0 4px 12px rgba(0,0,0,.08)}
+        .kpi-card{position:relative;overflow:hidden}
+        .upload-zone{border:2px dashed var(--border);border-radius:16px;padding:48px;text-align:center;transition:all .3s;cursor:pointer}.upload-zone:hover,.upload-zone.dragover{border-color:var(--accent-emerald);background:var(--accent-emerald-dim)}
+        .toast-container{position:fixed;top:24px;right:24px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+        .toast{padding:14px 20px;border-radius:12px;font-size:14px;font-weight:500;animation:slideIn .35s ease,fadeOut .3s 3.7s forwards;display:flex;align-items:center;gap:10px;min-width:280px;box-shadow:0 8px 32px rgba(0,0,0,.12)}
+        .toast-success{background:#ecfdf5;color:#065f46;border:1px solid #6ee7b7}.toast-error{background:#fef2f2;color:#991b1b;border:1px solid #fca5a5}.toast-info{background:#eff6ff;color:#1e40af;border:1px solid #93c5fd}
+        @keyframes slideIn{from{transform:translateX(100px);opacity:0}to{transform:translateX(0);opacity:1}}@keyframes fadeOut{to{opacity:0;transform:translateY(-10px)}}
+        .glow-line{height:2px;background:linear-gradient(90deg,transparent,var(--accent-emerald),transparent);animation:glowMove 3s ease-in-out infinite}@keyframes glowMove{0%,100%{opacity:.3}50%{opacity:1}}
+        .data-table{width:100%;border-collapse:collapse}.data-table th{text-align:left;padding:12px 16px;font-size:11px;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary);border-bottom:1px solid var(--border);font-weight:600}.data-table td{padding:12px 16px;font-size:14px;border-bottom:1px solid rgba(226,232,240,.5)}.data-table tr:hover td{background:rgba(5,150,105,.04)}
+        .badge{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:6px;font-size:12px;font-weight:600}
+        .section-panel{display:none;animation:fadeInUp .4s ease}.section-panel.active{display:block}@keyframes fadeInUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+        .empty-state{text-align:center;padding:60px 20px}.empty-state i{font-size:48px;color:var(--border);margin-bottom:16px}
+        .chart-container{position:relative;width:100%}
+        .detection-log{font-size:12px;line-height:1.8;max-height:200px;overflow-y:auto;padding:12px;background:var(--bg-card-hover);border-radius:8px;border:1px solid var(--border)}
+        .detection-log .ok{color:var(--accent-emerald)}.detection-log .warn{color:var(--accent-gold)}.detection-log .err{color:var(--accent-rose)}
+        .pdf-progress{height:4px;background:var(--bg-secondary);border-radius:2px;overflow:hidden;margin-top:16px;display:none}.pdf-progress.active{display:block}.pdf-progress-bar{height:100%;background:linear-gradient(90deg,var(--accent-emerald),var(--accent-gold));border-radius:2px;transition:width .3s;width:0}
+        .download-link-box{margin-top:16px;padding:16px;background:var(--accent-emerald-dim);border:1px solid rgba(5,150,105,.25);border-radius:10px;display:none;text-align:center}.download-link-box.active{display:block}.download-link-box a{color:var(--accent-emerald);font-weight:700;font-size:15px;text-decoration:underline;display:inline-flex;align-items:center;gap:8px}
+        .health-ring{position:relative;width:180px;height:180px;margin:0 auto}.health-ring svg{transform:rotate(-90deg)}.health-ring .score-text{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+
+        /* AI Assistant Enhanced Styles */
+        .chat-container{display:flex;flex-direction:column;height:520px;border:1px solid var(--border);border-radius:16px;overflow:hidden;background:var(--bg-secondary)}
+        .chat-header{padding:16px 20px;border-bottom:1px solid var(--border);background:linear-gradient(135deg,rgba(5,150,105,.06),rgba(2,132,199,.04));display:flex;align-items:center;gap:12px}
+        .chat-header .status-dot{width:8px;height:8px;border-radius:50%;background:var(--accent-emerald);animation:statusPulse 2s infinite}
+        @keyframes statusPulse{0%,100%{box-shadow:0 0 0 0 rgba(5,150,105,.3)}50%{box-shadow:0 0 0 6px rgba(5,150,105,0)}}
+        .chat-messages{flex:1;overflow-y:auto;padding:20px;display:flex;flex-direction:column;gap:16px;scroll-behavior:smooth}
+        .chat-bubble{max-width:88%;padding:14px 18px;border-radius:14px;font-size:14px;line-height:1.7;animation:bubbleIn .3s ease}
+        @keyframes bubbleIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+        .chat-bubble.bot{background:var(--bg-card);border:1px solid var(--border);align-self:flex-start;border-bottom-left-radius:4px}
+        .chat-bubble.user{background:var(--accent-emerald-dim);color:var(--accent-emerald);align-self:flex-end;border-bottom-right-radius:4px}
+        .chat-bubble.bot strong{color:var(--accent-emerald);font-weight:700}
+        .chat-bubble.bot .nav-link{color:var(--accent-sky);cursor:pointer;text-decoration:underline;font-weight:600}.chat-bubble.bot .nav-link:hover{color:#7dd3fc}
+        .chat-bubble.bot .highlight{color:var(--accent-gold);font-weight:600}
+        .quick-chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+        .chip{padding:6px 14px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:20px;font-size:12px;font-weight:600;color:var(--text-secondary);cursor:pointer;transition:all .2s;white-space:nowrap}
+        .chip:hover{border-color:var(--accent-emerald);color:var(--accent-emerald);background:var(--accent-emerald-dim)}
+        .chat-input-area{padding:16px;border-top:1px solid var(--border);background:var(--bg-card);display:flex;gap:10px}
+        .chat-input{flex:1;background:var(--bg-secondary);border:1px solid var(--border);border-radius:12px;color:var(--text-primary);padding:12px 16px;outline:none;font-size:14px;transition:border-color .2s}.chat-input:focus{border-color:var(--accent-emerald)}
+        .chat-send{background:linear-gradient(135deg,var(--accent-emerald),#059669);color:#fff;border:none;padding:12px 20px;border-radius:12px;cursor:pointer;font-weight:700;font-size:15px;transition:transform .15s}.chat-send:hover{transform:scale(1.05)}.chat-send:active{transform:scale(0.95)}
+        .typing-indicator{display:flex;gap:4px;padding:14px 18px;align-self:flex-start}
+        .typing-indicator span{width:8px;height:8px;border-radius:50%;background:var(--text-secondary);animation:typingBounce .6s infinite alternate}
+        .typing-indicator span:nth-child(2){animation-delay:.2s}.typing-indicator span:nth-child(3){animation-delay:.4s}
+        @keyframes typingBounce{to{opacity:.3;transform:translateY(-4px)}}
+
+        .leak-card{border-left:4px solid;padding:16px;background:var(--bg-card-hover);border-radius:0 8px 8px 0;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.05)}.leak-high{border-color:var(--accent-rose)}.leak-med{border-color:var(--accent-gold)}.leak-low{border-color:var(--accent-sky)}
+        @media(max-width:1024px){.sidebar{transform:translateX(-280px)}.sidebar.mobile-open{transform:translateX(0)}.main-content{margin-left:0!important}}
+
+        /* ===== Walkthrough / Tooltip System ===== */
+        .nav-tooltip{position:fixed;background:var(--bg-card);border:2px solid var(--accent-emerald);border-radius:12px;padding:16px 20px;min-width:270px;max-width:340px;z-index:9999;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;transform:translateX(8px);box-shadow:0 8px 32px rgba(0,0,0,.18),0 0 0 1px rgba(5,150,105,.12)}
+        .nav-tooltip.visible{opacity:1;pointer-events:auto;transform:translateX(0)}
+        .nav-tooltip h4{font-size:14px;font-weight:700;color:var(--accent-emerald);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+        .nav-tooltip p{font-size:13px;color:var(--text-secondary);line-height:1.6;margin:0}
+        .nav-tooltip .nav-path{margin-top:10px;padding:10px 12px;background:#f0fdf4;border-radius:8px;font-size:12px;color:var(--accent-sky);line-height:1.6;border:1px solid rgba(5,150,105,.15)}
+        .nav-tooltip .nav-path i{margin-right:4px;color:var(--accent-gold)}
+        .nav-tooltip .tooltip-arrow{position:absolute;left:-7px;top:50%;transform:translateY(-50%) rotate(45deg);width:12px;height:12px;background:var(--bg-card);border-left:2px solid var(--accent-emerald);border-bottom:2px solid var(--accent-emerald);pointer-events:none}
+
+        /* Guided Tour Overlay */
+        .tour-overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:9990;opacity:0;pointer-events:none;transition:opacity .35s}.tour-overlay.active{opacity:1;pointer-events:auto}
+        .tour-highlight{position:fixed;z-index:9991;border-radius:12px;box-shadow:0 0 0 4px var(--accent-emerald),0 0 24px rgba(5,150,105,.25);transition:all .4s cubic-bezier(.4,0,.2,1);pointer-events:none;background:rgba(5,150,105,.05)}
+        .tour-popup{position:fixed;z-index:9992;background:var(--bg-card);border:1px solid var(--accent-emerald);border-radius:16px;padding:24px;max-width:380px;box-shadow:0 16px 48px rgba(0,0,0,.15);animation:tourPopIn .35s ease}
+        @keyframes tourPopIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+        .tour-popup h3{font-size:16px;font-weight:700;color:var(--accent-emerald);margin-bottom:8px;display:flex;align-items:center;gap:8px}
+        .tour-popup p{font-size:13px;color:var(--text-secondary);line-height:1.7;margin-bottom:14px}
+        .tour-popup .tour-steps{display:flex;align-items:center;gap:8px;margin-bottom:16px}
+        .tour-popup .tour-dot{width:8px;height:8px;border-radius:50%;background:var(--border);transition:all .2s}.tour-popup .tour-dot.active{background:var(--accent-emerald);width:20px;border-radius:4px}
+        .tour-popup .tour-nav{display:flex;justify-content:space-between;align-items:center}
+        .tour-popup .tour-btn{padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+        .tour-popup .tour-btn-skip{background:transparent;color:var(--text-secondary);border:1px solid var(--border)}.tour-popup .tour-btn-skip:hover{border-color:var(--accent-rose);color:var(--accent-rose)}
+        .tour-popup .tour-btn-next{background:linear-gradient(135deg,var(--accent-emerald),#059669);color:#fff}.tour-popup .tour-btn-next:hover{transform:scale(1.03)}
+        .tour-popup .tour-btn-prev{background:var(--bg-secondary);color:var(--text-secondary);border:1px solid var(--border)}.tour-popup .tour-btn-prev:hover{border-color:var(--accent-sky);color:var(--accent-sky)}
+
+        /* Start Tour Button */
+        .start-tour-btn{display:flex;align-items:center;gap:8px;padding:8px 16px;background:var(--accent-emerald-dim);border:1px solid rgba(5,150,105,.25);color:var(--accent-emerald);border-radius:10px;cursor:pointer;font-size:13px;font-weight:600;transition:all .2s;margin:12px 16px 16px;flex-shrink:0}
+        .start-tour-btn:hover{background:rgba(5,150,105,.15);border-color:var(--accent-emerald)}
+        .start-tour-btn i{font-size:14px}
+
+        /* PDF Report Enhanced Styles */
+        .pdf-section-opts{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:20px 0}
+        .pdf-opt{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:10px;cursor:pointer;transition:all .2s;font-size:13px;color:var(--text-secondary)}
+        .pdf-opt:hover{border-color:var(--accent-emerald);color:var(--text-primary)}
+        .pdf-opt.selected{border-color:var(--accent-emerald);background:var(--accent-emerald-dim);color:var(--accent-emerald)}
+        .pdf-opt i{font-size:16px;width:20px;text-align:center}
+        .pdf-opt input[type=checkbox]{display:none}
+    </style>
+</head>
+<body>
+    <div class="toast-container" id="toastContainer"></div>
+    <aside class="sidebar" id="sidebar">
+        <div style="padding:24px 20px 20px"><div style="display:flex;align-items:center;gap:10px"><div style="width:36px;height:36px;background:linear-gradient(135deg,var(--accent-emerald),#059669);border-radius:10px;display:flex;align-items:center;justify-content:center"><i class="fas fa-chart-line" style="color:#fff;font-size:16px"></i></div><div><h1 style="font-size:20px;font-weight:700;letter-spacing:-.5px">FinLens</h1><p style="font-size:10px;color:var(--text-secondary);letter-spacing:1.5px;text-transform:uppercase">Pro Portal</p></div></div></div>
+        <div class="glow-line" style="margin:0 20px 16px"></div>
+        <nav>
+            <div class="nav-item active" data-section="dashboard" data-tour="0" onclick="switchSection('dashboard',this)" style="position:relative"><i class="fas fa-th-large" style="width:18px;text-align:center"></i> Dashboard<div class="nav-tooltip"><div class="tooltip-arrow"></div><h4><i class="fas fa-th-large"></i> Dashboard</h4><p>Your financial command center. See KPIs, revenue vs expenses charts, and expense breakdowns at a glance.</p><div class="nav-path"><i class="fas fa-route"></i> Start here after uploading data. Navigate to <b>Revenue & Expenses</b> for deeper analysis.</div></div></div>
+            <div class="nav-item" data-section="upload" data-tour="1" onclick="switchSection('upload',this)" style="position:relative"><i class="fas fa-cloud-upload-alt" style="width:18px;text-align:center"></i> Upload Data<div class="nav-tooltip"><div class="tooltip-arrow"></div><h4><i class="fas fa-cloud-upload-alt"></i> Upload Data</h4><p>Import your CSV or Excel financial data. Auto-detects columns, classifies revenue vs expenses, and populates all dashboards.</p><div class="nav-path"><i class="fas fa-route"></i> First step! Upload data here, then go to <b>Dashboard</b> to see results.</div></div></div>
+            <div class="nav-item" data-section="revenue" data-tour="2" onclick="switchSection('revenue',this)" style="position:relative"><i class="fas fa-chart-bar" style="width:18px;text-align:center"></i> Revenue & Expenses<div class="nav-tooltip"><div class="tooltip-arrow"></div><h4><i class="fas fa-chart-bar"></i> Revenue & Expenses</h4><p>Monthly revenue and expense bar charts with a side-by-side comparison view.</p><div class="nav-path"><i class="fas fa-route"></i> From <b>Dashboard</b>, click here for detailed monthly breakdowns. Then explore <b>Profit Trends</b>.</div></div></div>
+            <div class="nav-item" data-section="profit" data-tour="3" onclick="switchSection('profit',this)" style="position:relative"><i class="fas fa-chart-area" style="width:18px;text-align:center"></i> Profit Trends<div class="nav-tooltip"><div class="tooltip-arrow"></div><h4><i class="fas fa-chart-area"></i> Profit Trends</h4><p>Net profit trajectory, margin percentages, and cumulative profit over time.</p><div class="nav-path"><i class="fas fa-route"></i> Continue from <b>Revenue & Expenses</b> to see profitability. Next: <b>Category Analysis</b>.</div></div></div>
+            <div class="nav-item" data-section="categories" data-tour="4" onclick="switchSection('categories',this)" style="position:relative"><i class="fas fa-tags" style="width:18px;text-align:center"></i> Category Analysis<div class="nav-tooltip"><div class="tooltip-arrow"></div><h4><i class="fas fa-tags"></i> Category Analysis</h4><p>Doughnut charts for expense and revenue categories with a percentage breakdown.</p><div class="nav-path"><i class="fas fa-route"></i> After <b>Profit Trends</b>, dig into categories. Then check <b>Cash Flow</b>.</div></div></div>
+            <div class="nav-item" data-section="cashflow" data-tour="5" onclick="switchSection('cashflow',this)" style="position:relative"><i class="fas fa-exchange-alt" style="width:18px;text-align:center"></i> Cash Flow<div class="nav-tooltip"><div class="tooltip-arrow"></div><h4><i class="fas fa-exchange-alt"></i> Cash Flow</h4><p>Visualize inflows vs outflows with net cash position tracking.</p><div class="nav-path"><i class="fas fa-route"></i> From <b>Category Analysis</b>, view cash flow. Then try <b>Health Score</b> for an overall check.</div></div></div>
+            <div class="glow-line" style="margin:12px 20px"></div>
+            <p style="font-size:10px;color:var(--text-secondary);padding:0 20px;margin-bottom:8px;letter-spacing:1px">PRO INSIGHTS</p>
+            <div class="nav-item" data-section="health" data-tour="6" onclick="switchSection('health',this)" style="position:relative"><i class="fas fa-heartbeat" style="width:18px;text-align:center"></i> Health Score<div class="nav-tooltip"><div class="tooltip-arrow"></div><h4><i class="fas fa-heartbeat"></i> Health Score</h4><p>Overall financial fitness score (0-100) with strengths and weaknesses analysis.</p><div class="nav-path"><i class="fas fa-route"></i> Check here after reviewing <b>Cash Flow</b>. Then ask the <b>AI CFO Assistant</b> for insights.</div></div></div>
+            <div class="nav-item" data-section="assistant" data-tour="7" onclick="switchSection('assistant',this)" style="position:relative"><i class="fas fa-robot" style="width:18px;text-align:center"></i> AI CFO Assistant<div class="nav-tooltip"><div class="tooltip-arrow"></div><h4><i class="fas fa-robot"></i> AI CFO Assistant</h4><p>Chat with an AI CFO! Ask about your finances, get navigation help, or request business insights.</p><div class="nav-path"><i class="fas fa-route"></i> Use anytime! Ask "How do I download a report?" or "What is my profit margin?"</div></div></div>
+            <div class="nav-item" data-section="forecast" data-tour="8" onclick="switchSection('forecast',this)" style="position:relative"><i class="fas fa-chart-line" style="width:18px;text-align:center"></i> Cash Forecast<div class="nav-tooltip"><div class="tooltip-arrow"></div><h4><i class="fas fa-chart-line"></i> Cash Forecast</h4><p>30/60/90 day cash projections with risk alerts for potential cash shortfalls.</p><div class="nav-path"><i class="fas fa-route"></i> After <b>Health Score</b>, view forecasts. Then run <b>Leak Detection</b>.</div></div></div>
+            <div class="nav-item" data-section="leaks" data-tour="9" onclick="switchSection('leaks',this)" style="position:relative"><i class="fas fa-search-dollar" style="width:18px;text-align:center"></i> Leak Detection<div class="nav-tooltip"><div class="tooltip-arrow"></div><h4><i class="fas fa-search-dollar"></i> Leak Detection</h4><p>Automatically detect spending spikes, recurring charges, and category overspends.</p><div class="nav-path"><i class="fas fa-route"></i> From <b>Cash Forecast</b>, check for leaks. Then compare with <b>Benchmarks</b>.</div></div></div>
+            <div class="nav-item" data-section="benchmark" data-tour="10" onclick="switchSection('benchmark',this)" style="position:relative"><i class="fas fa-industry" style="width:18px;text-align:center"></i> Benchmarks<div class="nav-tooltip"><div class="tooltip-arrow"></div><h4><i class="fas fa-industry"></i> Benchmarks</h4><p>Compare your margins and expense ratios against industry averages (SaaS, Retail, etc.).</p><div class="nav-path"><i class="fas fa-route"></i> After <b>Leak Detection</b>, benchmark yourself. Finally, generate a <b>PDF Report</b>.</div></div></div>
+            <div class="glow-line" style="margin:12px 20px"></div>
+            <div class="nav-item" data-section="report" data-tour="11" onclick="switchSection('report',this)" style="position:relative"><i class="fas fa-file-pdf" style="width:18px;text-align:center"></i> PDF Report<div class="nav-tooltip"><div class="tooltip-arrow"></div><h4><i class="fas fa-file-pdf"></i> PDF Report</h4><p>Generate and download a comprehensive PDF report with all your financial data and insights.</p><div class="nav-path"><i class="fas fa-route"></i> Final step! Export everything to PDF. From any section, come here to download your report.</div></div></div>
+        </nav>
+        <button class="start-tour-btn" onclick="startTour()"><i class="fas fa-question-circle"></i> New User Tour</button>
+    </aside>
+
+    <main class="main-content" id="mainContent">
+        <header style="padding:16px 32px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border);background:rgba(255,255,255,.85);backdrop-filter:blur(12px);position:sticky;top:0;z-index:40">
+            <div style="display:flex;align-items:center;gap:16px"><button class="mobile-toggle" onclick="document.getElementById('sidebar').classList.toggle('mobile-open')" style="background:var(--bg-card);border:1px solid var(--border);color:var(--text-secondary);padding:8px 10px;border-radius:8px;cursor:pointer;font-size:16px;display:none" id="mobileToggle"><i class="fas fa-bars"></i></button><div><h2 style="font-size:22px;font-weight:700;letter-spacing:-.5px" id="sectionTitle">Dashboard</h2><p style="font-size:12px;color:var(--text-secondary)" id="sectionSubtitle">Financial overview</p></div></div>
+            <span class="badge" id="dataStatus" style="background:var(--accent-gold-dim);color:var(--accent-gold)"><i class="fas fa-database" style="font-size:10px"></i> No Data</span>
+        </header>
+
+        <div style="padding:28px 32px;position:relative;z-index:1">
+            <!-- Dashboard -->
+            <div class="section-panel active" id="section-dashboard">
+                <div id="dashEmpty" class="card empty-state"><i class="fas fa-cloud-upload-alt"></i><h3 style="font-size:20px;font-weight:700;margin-bottom:8px">No Financial Data Loaded</h3><p style="color:var(--text-secondary);margin-bottom:20px">Upload your CSV file to start analyzing.</p><button onclick="switchSection('upload',document.querySelector('[data-section=upload]'))" style="background:linear-gradient(135deg,var(--accent-emerald),#059669);color:#fff;border:none;padding:12px 28px;border-radius:10px;cursor:pointer;font-size:14px;font-weight:700"><i class="fas fa-upload" style="margin-right:6px"></i> Upload CSV</button></div>
+                <div id="dashContent" style="display:none">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px;margin-bottom:28px">
+                        <div class="card kpi-card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:13px;color:var(--text-secondary)">Total Revenue</span><div style="width:36px;height:36px;background:var(--accent-emerald-dim);border-radius:10px;display:flex;align-items:center;justify-content:center"><i class="fas fa-arrow-up" style="color:var(--accent-emerald);font-size:14px"></i></div></div><div style="font-size:28px;font-weight:900;font-family:'Space Grotesk'" id="kpiRevenue">$0</div></div>
+                        <div class="card kpi-card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:13px;color:var(--text-secondary)">Total Expenses</span><div style="width:36px;height:36px;background:var(--accent-rose-dim);border-radius:10px;display:flex;align-items:center;justify-content:center"><i class="fas fa-arrow-down" style="color:var(--accent-rose);font-size:14px"></i></div></div><div style="font-size:28px;font-weight:900;font-family:'Space Grotesk'" id="kpiExpenses">$0</div></div>
+                        <div class="card kpi-card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:13px;color:var(--text-secondary)">Net Profit</span><div style="width:36px;height:36px;background:var(--accent-gold-dim);border-radius:10px;display:flex;align-items:center;justify-content:center"><i class="fas fa-coins" style="color:var(--accent-gold);font-size:14px"></i></div></div><div style="font-size:28px;font-weight:900;font-family:'Space Grotesk'" id="kpiProfit">$0</div></div>
+                        <div class="card kpi-card"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px"><span style="font-size:13px;color:var(--text-secondary)">Profit Margin</span><div style="width:36px;height:36px;background:var(--accent-sky-dim);border-radius:10px;display:flex;align-items:center;justify-content:center"><i class="fas fa-percent" style="color:var(--accent-sky);font-size:14px"></i></div></div><div style="font-size:28px;font-weight:900;font-family:'Space Grotesk'" id="kpiMargin">0%</div></div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:2fr 1fr;gap:20px"><div class="card"><h3 style="font-size:16px;font-weight:700;margin-bottom:20px">Revenue vs Expenses</h3><div class="chart-container" style="height:280px"><canvas id="dashRevExpChart"></canvas></div></div><div class="card"><h3 style="font-size:16px;font-weight:700;margin-bottom:20px">Expense Breakdown</h3><div class="chart-container" style="height:280px"><canvas id="dashDonutChart"></canvas></div></div></div>
+                </div>
+            </div>
+            <!-- Upload -->
+            <div class="section-panel" id="section-upload"><div style="display:grid;grid-template-columns:1fr 1fr;gap:24px"><div><div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"><input type="file" id="fileInput" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleFileUpload(event)"><div style="margin-bottom:20px"><i class="fas fa-cloud-upload-alt" style="font-size:48px;color:var(--accent-emerald)"></i></div><h3 style="font-size:18px;font-weight:700;margin-bottom:8px">Upload Financial Data</h3><p style="color:var(--text-secondary);font-size:14px">Drop your CSV/Excel file here</p></div></div><div><div class="card"><h3 style="font-size:16px;font-weight:700;margin-bottom:16px">Detection Log</h3><div id="detectionLog" class="detection-log"><div style="color:var(--text-secondary)">Upload a file to see auto-detection results...</div></div></div></div></div></div>
+            <!-- Revenue --><div class="section-panel" id="section-revenue"><div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px"><div class="card"><h3 style="font-size:16px;font-weight:700;margin-bottom:16px">Monthly Revenue</h3><div class="chart-container" style="height:300px"><canvas id="revenueBarChart"></canvas></div></div><div class="card"><h3 style="font-size:16px;font-weight:700;margin-bottom:16px">Monthly Expenses</h3><div class="chart-container" style="height:300px"><canvas id="expenseBarChart"></canvas></div></div></div><div class="card"><h3 style="font-size:16px;font-weight:700;margin-bottom:16px">Revenue vs Expenses Comparison</h3><div class="chart-container" style="height:340px"><canvas id="revExpCompareChart"></canvas></div></div></div>
+            <!-- Profit --><div class="section-panel" id="section-profit"><div class="card" style="margin-bottom:24px"><div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px"><div><h3 style="font-size:16px;font-weight:700">Net Profit Trend</h3><p style="font-size:12px;color:var(--text-secondary)">Monthly trajectory</p></div><div style="display:flex;align-items:center;gap:16px"><div style="text-align:right"><div style="font-size:11px;color:var(--text-secondary)">Avg Margin</div><div style="font-size:20px;font-weight:900;font-family:'Space Grotesk';color:var(--accent-emerald)" id="avgProfitMargin">0%</div></div><div style="text-align:right"><div style="font-size:11px;color:var(--text-secondary)">Best Month</div><div style="font-size:20px;font-weight:900;font-family:'Space Grotesk';color:var(--accent-gold)" id="bestMonth">-</div></div></div></div><div class="chart-container" style="height:320px"><canvas id="profitTrendChart"></canvas></div></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:20px"><div class="card"><h3 style="font-size:16px;font-weight:700;margin-bottom:16px">Profit Margin %</h3><div class="chart-container" style="height:260px"><canvas id="profitMarginChart"></canvas></div></div><div class="card"><h3 style="font-size:16px;font-weight:700;margin-bottom:16px">Cumulative Profit</h3><div class="chart-container" style="height:260px"><canvas id="cumulativeProfitChart"></canvas></div></div></div></div>
+            <!-- Categories --><div class="section-panel" id="section-categories"><div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px"><div class="card"><h3 style="font-size:16px;font-weight:700;margin-bottom:16px">Expense Categories</h3><div class="chart-container" style="height:300px"><canvas id="expCatChart"></canvas></div></div><div class="card"><h3 style="font-size:16px;font-weight:700;margin-bottom:16px">Revenue Categories</h3><div class="chart-container" style="height:300px"><canvas id="revCatChart"></canvas></div></div></div><div class="card"><h3 style="font-size:16px;font-weight:700;margin-bottom:16px">Category Breakdown</h3><div id="categoryBreakdown"></div></div></div>
+            <!-- Cash Flow --><div class="section-panel" id="section-cashflow"><div class="card" style="margin-bottom:24px"><h3 style="font-size:16px;font-weight:700;margin-bottom:16px">Cash Flow Statement</h3><div class="chart-container" style="height:320px"><canvas id="cashFlowChart"></canvas></div></div><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px"><div class="card" style="text-align:center"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">Total Inflows</div><div style="font-size:24px;font-weight:900;font-family:'Space Grotesk';color:var(--accent-emerald)" id="totalInflows">$0</div></div><div class="card" style="text-align:center"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">Total Outflows</div><div style="font-size:24px;font-weight:900;font-family:'Space Grotesk';color:var(--accent-rose)" id="totalOutflows">$0</div></div><div class="card" style="text-align:center"><div style="font-size:12px;color:var(--text-secondary);margin-bottom:4px">Net Position</div><div style="font-size:24px;font-weight:900;font-family:'Space Grotesk';color:var(--accent-gold)" id="netPosition">$0</div></div></div></div>
+            <!-- Health --><div class="section-panel" id="section-health"><div style="display:grid;grid-template-columns:1fr 2fr;gap:24px"><div class="card" style="text-align:center"><h3 style="font-size:16px;font-weight:700;margin-bottom:24px">Health Score</h3><div class="health-ring"><svg width="180" height="180"><circle cx="90" cy="90" r="80" stroke="var(--bg-secondary)" stroke-width="12" fill="none"></circle><circle id="healthCircle" cx="90" cy="90" r="80" stroke="var(--accent-emerald)" stroke-width="12" fill="none" stroke-dasharray="502" stroke-dashoffset="502" stroke-linecap="round"></circle></svg><div class="score-text"><span id="healthScoreVal" style="font-size:48px;font-weight:900;font-family:'Space Grotesk';color:var(--accent-emerald)">0</span><span style="font-size:12px;color:var(--text-secondary)">out of 100</span></div></div><div id="healthRiskBadge" class="badge" style="margin-top:20px;font-size:14px;padding:8px 16px;background:var(--accent-emerald-dim);color:var(--accent-emerald)">Low Risk</div></div><div class="card"><h3 style="font-size:16px;font-weight:700;margin-bottom:20px">Breakdown</h3><div style="display:grid;grid-template-columns:1fr 1fr;gap:20px"><div><h4 style="font-size:14px;color:var(--accent-emerald);margin-bottom:12px"><i class="fas fa-check-circle" style="margin-right:6px"></i>Strengths</h4><ul id="healthStrengths" style="list-style:none;font-size:13px;color:var(--text-secondary);line-height:2"></ul></div><div><h4 style="font-size:14px;color:var(--accent-rose);margin-bottom:12px"><i class="fas fa-exclamation-triangle" style="margin-right:6px"></i>Weaknesses</h4><ul id="healthWeaknesses" style="list-style:none;font-size:13px;color:var(--text-secondary);line-height:2"></ul></div></div></div></div></div>
+
+            <!-- ===== AI CFO ASSISTANT (ENHANCED) ===== -->
+            <div class="section-panel" id="section-assistant">
+                <div class="card" style="padding:0;overflow:hidden">
+                    <div class="chat-header">
+                        <div style="width:44px;height:44px;background:linear-gradient(135deg,var(--accent-emerald),var(--accent-sky));border-radius:12px;display:flex;align-items:center;justify-content:center"><i class="fas fa-robot" style="color:#fff;font-size:20px"></i></div>
+                        <div style="flex:1"><h3 style="font-size:17px;font-weight:700">FinLens AI CFO Assistant</h3><div style="display:flex;align-items:center;gap:6px"><div class="status-dot"></div><span style="font-size:12px;color:var(--accent-emerald)">Online — Ready to help</span></div></div>
+                        <button onclick="clearChat()" style="background:var(--bg-secondary);border:1px solid var(--border);color:var(--text-secondary);padding:8px 14px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600"><i class="fas fa-trash-alt" style="margin-right:4px"></i> Clear</button>
+                    </div>
+                    <div class="chat-messages" id="chatMessages"></div>
+                    <div class="chat-input-area">
+                        <input type="text" id="chatInput" class="chat-input" placeholder="Ask me anything about your finances, this app, or business strategy..." onkeypress="if(event.key==='Enter')sendChat()">
+                        <button class="chat-send" onclick="sendChat()"><i class="fas fa-paper-plane"></i></button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Forecast --><div class="section-panel" id="section-forecast"><div style="display:grid;grid-template-columns:2fr 1fr;gap:24px"><div class="card"><h3 style="font-size:16px;font-weight:700;margin-bottom:20px">30 / 60 / 90 Day Cash Forecast</h3><div class="chart-container" style="height:320px"><canvas id="forecastChart"></canvas></div></div><div><div class="card" style="margin-bottom:16px;text-align:center"><h4 style="font-size:13px;color:var(--text-secondary);margin-bottom:8px">Projected Cash in 90 Days</h4><div id="projectedCash90" style="font-size:28px;font-weight:900;font-family:'Space Grotesk';color:var(--accent-emerald)">$0</div></div><div class="card" id="forecastAlerts"><h4 style="font-size:14px;font-weight:700;margin-bottom:12px"><i class="fas fa-exclamation-triangle" style="color:var(--accent-gold);margin-right:6px"></i>Risk Alerts</h4><p style="font-size:13px;color:var(--text-secondary)">No data to calculate alerts.</p></div></div></div></div>
+            <!-- Leaks --><div class="section-panel" id="section-leaks"><div class="card"><h3 style="font-size:16px;font-weight:700;margin-bottom:20px"><i class="fas fa-search-dollar" style="color:var(--accent-rose);margin-right:8px"></i>Smart Expense Leak Detection</h3><div id="leakResults"><p style="color:var(--text-secondary);text-align:center;padding:32px">Upload data to scan.</p></div></div></div>
+            <!-- Benchmark --><div class="section-panel" id="section-benchmark"><div class="card"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px"><h3 style="font-size:16px;font-weight:700">Industry Benchmarking</h3><select id="industrySelect" onchange="renderBenchmark()" style="background:var(--bg-secondary);border:1px solid var(--border);color:var(--text-primary);padding:8px 12px;border-radius:8px;outline:none"><option value="saas">SaaS / Software</option><option value="retail">Retail / E-commerce</option><option value="services">Professional Services</option><option value="manufacturing">Manufacturing</option></select></div><div style="display:grid;grid-template-columns:1fr 1fr;gap:24px"><div class="chart-container" style="height:300px"><canvas id="benchmarkChart"></canvas></div><div id="benchmarkInsights" style="font-size:14px;color:var(--text-secondary);line-height:1.8"></div></div></div></div>
+            <!-- Report --><div class="section-panel" id="section-report"><div class="card" style="max-width:700px"><h3 style="font-size:22px;font-weight:900;margin-bottom:4px">Download Financial Report</h3><p style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Select sections to include, then generate your PDF.</p><div class="pdf-section-opts" id="pdfSectionOpts"><label class="pdf-opt selected" data-section-opt="summary"><i class="fas fa-chart-pie" style="color:var(--accent-emerald)"></i> Executive Summary</label><label class="pdf-opt selected" data-section-opt="monthly"><i class="fas fa-calendar-alt" style="color:var(--accent-sky)"></i> Monthly Breakdown</label><label class="pdf-opt selected" data-section-opt="categories"><i class="fas fa-tags" style="color:var(--accent-gold)"></i> Category Analysis</label><label class="pdf-opt selected" data-section-opt="cashflow"><i class="fas fa-exchange-alt" style="color:var(--accent-emerald)"></i> Cash Flow</label><label class="pdf-opt selected" data-section-opt="health"><i class="fas fa-heartbeat" style="color:var(--accent-rose)"></i> Health Score</label><label class="pdf-opt selected" data-section-opt="forecast"><i class="fas fa-chart-line" style="color:var(--accent-sky)"></i> Cash Forecast</label><label class="pdf-opt selected" data-section-opt="leaks"><i class="fas fa-search-dollar" style="color:var(--accent-rose)"></i> Leak Detection</label><label class="pdf-opt selected" data-section-opt="benchmark"><i class="fas fa-industry" style="color:var(--accent-gold)"></i> Benchmarks</label></div><button id="genPdfBtn" onclick="generatePDFReport()" style="width:100%;padding:16px;background:linear-gradient(135deg,var(--accent-emerald),#059669);color:#fff;border:none;border-radius:12px;cursor:pointer;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:10px"><i class="fas fa-file-download"></i> Generate and Download PDF</button><div class="pdf-progress" id="pdfProgress"><div class="pdf-progress-bar" id="pdfProgressBar"></div></div><div class="download-link-box" id="downloadLinkBox"><a id="downloadLink" href="#" download="Financial_Report.pdf"><i class="fas fa-download"></i> Click here to save PDF</a></div></div></div>
+        </div>
+    </main>
+
+<script>
+let financialData=[];let chartInstances={};
+const COLORS={emerald:'#059669',rose:'#dc2626',gold:'#d97706',sky:'#0284c7',purple:'#7c3aed',orange:'#ea580c',teal:'#0d9488'};
+const CHART_COLORS=[COLORS.emerald,COLORS.rose,COLORS.gold,COLORS.sky,COLORS.purple,COLORS.orange,COLORS.teal];
+Chart.defaults.color='#64748b';Chart.defaults.borderColor='rgba(226,232,240,0.8)';Chart.defaults.font.family="'DM Sans',sans-serif";
+
+function showToast(msg,type='success'){const c=document.getElementById('toastContainer');const t=document.createElement('div');t.className=`toast toast-${type}`;t.innerHTML=`<i class="fas ${type==='success'?'fa-check-circle':'fa-exclamation-circle'}"></i> ${msg}`;c.appendChild(t);setTimeout(()=>t.remove(),4000);}
+const sectionTitles={dashboard:['Dashboard','Financial overview'],upload:['Upload Data','Import data'],revenue:['Revenue & Expenses','Monthly analysis'],profit:['Profit Trends','Trajectory'],categories:['Category Analysis','Breakdown'],cashflow:['Cash Flow','Inflows & outflows'],health:['Health Score','Fitness check'],assistant:['AI CFO','Smart assistant'],forecast:['Cash Forecast','Projections'],leaks:['Leak Detection','Hidden expenses'],benchmark:['Benchmarks','Industry comparison'],report:['PDF Report','Generate reports']};
+function switchSection(section,el){document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));if(el)el.classList.add('active');document.querySelectorAll('.section-panel').forEach(p=>p.classList.remove('active'));const panel=document.getElementById('section-'+section);if(panel){void panel.offsetWidth;panel.classList.add('active');}const[t,s]=sectionTitles[section]||['',''];document.getElementById('sectionTitle').textContent=t;document.getElementById('sectionSubtitle').textContent=s;setTimeout(()=>renderSectionCharts(section),60);}
+
+function getMonthlyData(){const m={};financialData.forEach(d=>{const k=d.date.toLocaleString('en-US',{month:'short',year:'2-digit'});if(!m[k])m[k]={revenue:0,expenses:0,month:d.date};if(d.type==='Revenue')m[k].revenue+=d.amount;else m[k].expenses+=d.amount;});return Object.entries(m).sort((a,b)=>a[1].month-b[1].month).map(([l,v])=>({label:l,revenue:Math.round(v.revenue),expenses:Math.round(v.expenses),profit:Math.round(v.revenue-v.expenses),month:v.month}));}
+function getCategoryData(type){const c={};financialData.filter(d=>d.type===type).forEach(d=>{if(!c[d.category])c[d.category]=0;c[d.category]+=d.amount;});return Object.entries(c).map(([cat,amt])=>({category:cat,amount:Math.round(amt)})).sort((a,b)=>b.amount-a.amount);}
+function formatCurrency(v){if(Math.abs(v)>=1e6)return'$'+(v/1e6).toFixed(1)+'M';if(Math.abs(v)>=1e3)return'$'+(v/1e3).toFixed(1)+'K';return'$'+v.toLocaleString();}
+function formatFullCurrency(v){return'$'+Math.abs(v).toLocaleString(undefined,{minimumFractionDigits:0,maximumFractionDigits:0});}
+function showDataContent(){document.getElementById('dashEmpty').style.display='none';document.getElementById('dashContent').style.display='block';document.getElementById('dataStatus').innerHTML='<i class="fas fa-database" style="font-size:10px"></i> '+financialData.length+' Rows';document.getElementById('dataStatus').style.background='var(--accent-emerald-dim)';document.getElementById('dataStatus').style.color='var(--accent-emerald)';}
+
+/* Data parsing */
+function tryParseDate(val){if(val==null)return null;if(val instanceof Date&&!isNaN(val))return val;if(typeof val==='number'){if(val>10000&&val<100000)return new Date((val-25569)*86400000);return null;}const s=String(val).trim();if(!s||s.length<4)return null;let d=new Date(s);if(!isNaN(d.getTime())&&d.getFullYear()>1900&&d.getFullYear()<2100)return d;const parts=s.split(/[\/\-\.]/);if(parts.length===3){const a=parseInt(parts[0]),b=parseInt(parts[1]),c=parseInt(parts[2]);if(!isNaN(a)&&!isNaN(b)&&!isNaN(c)){if(c>100){d=new Date(c,b-1,a);if(!isNaN(d.getTime()))return d;d=new Date(c,a-1,b);if(!isNaN(d.getTime()))return d;}else if(a>100){d=new Date(a,b-1,c);if(!isNaN(d.getTime()))return d;}}}return null;}
+function tryParseAmount(val){if(val==null)return NaN;if(typeof val==='number')return val;let s=String(val).trim();if(!s)return NaN;const isNeg=s.startsWith('(')&&s.endsWith(')');if(isNeg)s=s.slice(1,-1);s=s.replace(/[^0-9.\-]/g,'');return isNeg?-parseFloat(s):parseFloat(s);}
+function isDateColumn(data,col){let h=0;const s=data.slice(0,20);s.forEach(r=>{if(tryParseDate(r[col]))h++;});return h>s.length*.6;}
+function isNumericColumn(data,col){let h=0;const s=data.slice(0,20);s.forEach(r=>{if(!isNaN(tryParseAmount(r[col])))h++;});return h>s.length*.6;}
+const REV_KW=['revenue','income','sale','receipt','credit','deposit','earning','return','interest income','dividend','refund received','subscription revenue','commission received','rental income','royalt','fee received','gain','proceed','inflow','received','receivable','sales','turnover'];
+const EXP_KW=['expense','cost','payment','debit','withdrawal','purchase','salary','wages','payroll','rent','lease','utility','utilities','marketing','advertising','insurance','travel','meals','entertainment','supply','supplies','fee','tax','depreciation','amortiz','interest exp','maintenance','repair','software','hardware','consulting','legal','audit','accounting','office','phone','internet','telecom','fuel','transport','freight','shipping','subscription','saas','cloud','hosting','server','bank charge','charge','commission paid','meal','food','catering','training','recruitment','bonus','health','medical','benefit','pension','outgoing','outflow','paid','payable','bill'];
+function classifyText(t){if(!t)return null;const l=String(t).toLowerCase().trim();if(!l)return null;if(REV_KW.some(w=>l.includes(w)))return'Revenue';if(EXP_KW.some(w=>l.includes(w)))return'Expense';return null;}
+
+function autoDetectAndProcess(rawData,columns){const log=[];const L=(m,t='ok')=>log.push({msg:m,type:t});L(`Scanning ${rawData.length} rows...`,'ok');const ci=columns.map(c=>({col:c,lower:c.toLowerCase().trim().replace(/[^a-z0-9_]/g,''),orig:c.toLowerCase().trim(),role:null}));
+let dateCol=null;for(const c of ci)if(/date|dt|time|period/.test(c.lower)&&isDateColumn(rawData,c.col)){dateCol=c.col;c.role='date';break;}if(!dateCol)for(const c of ci)if(!c.role&&isDateColumn(rawData,c.col)){dateCol=c.col;c.role='date';break;}
+let debitCol=null,creditCol=null,pairedFormat=null;for(const c of ci){if(c.role)continue;const o=c.orig;if(/^debit$|^dr$|^withdrawal|^outflow/.test(o)&&isNumericColumn(rawData,c.col)){debitCol=c.col;c.role='debit';}if(/^credit$|^cr$|^deposit|^inflow/.test(o)&&isNumericColumn(rawData,c.col)){creditCol=c.col;c.role='credit';}if(/^income$|^revenue$|^sales_amt/.test(o)&&isNumericColumn(rawData,c.col)){creditCol=c.col;if(!c.role)c.role='credit';}if(/^expense$|^cost$|^expenditure|^expense_amt/.test(o)&&isNumericColumn(rawData,c.col)){debitCol=c.col;if(!c.role)c.role='debit';}}
+if(debitCol&&creditCol){pairedFormat='debit_credit';L('Paired format detected','ok');}
+let amountCol=null;if(!pairedFormat){for(const c of ci){if(c.role)continue;if(/amount|amt|value|sum|total|balance/.test(c.orig)&&isNumericColumn(rawData,c.col)){amountCol=c.col;c.role='amount';break;}}if(!amountCol)for(const c of ci)if(!c.role&&isNumericColumn(rawData,c.col)){amountCol=c.col;c.role='amount';break;}}
+let typeCol=null;for(const c of ci){if(c.role)continue;if(/^type$|^direction$|^trans_type|^classification/.test(c.orig)){typeCol=c.col;c.role='type';break;}}
+let descCol=null;for(const c of ci){if(c.role)continue;if(/desc|memo|narrat|refer|detail|payee|merchant|name/.test(c.orig)){descCol=c.col;c.role='desc';break;}}if(!descCol)for(const c of ci)if(!c.role&&!isNumericColumn(rawData,c.col)&&!isDateColumn(rawData,c.col)){descCol=c.col;c.role='desc';break;}
+let catCol=null;for(const c of ci){if(c.role)continue;if(/categ|cat$|group|class|account/.test(c.orig)){catCol=c.col;c.role='cat';break;}}if(!catCol)for(const c of ci)if(!c.role&&!isNumericColumn(rawData,c.col)&&!isDateColumn(rawData,c.col)&&c.col!==descCol){catCol=c.col;c.role='cat';break;}
+const results=[];let rC=0,eC=0,sk=0;const catMap={};if(catCol){[...new Set(rawData.map(r=>String(r[catCol]||'').trim()))].filter(Boolean).forEach(cat=>{const t=classifyText(cat);if(t)catMap[cat]=t;});}
+function classifyRow(row){if(typeCol){const t=classifyText(String(row[typeCol]||''));if(t)return t;}if(catCol){const cv=String(row[catCol]||'').trim();if(catMap[cv])return catMap[cv];const t=classifyText(cv);if(t){catMap[cv]=t;return t;}}if(descCol){const t=classifyText(String(row[descCol]||''));if(t)return t;}if(amountCol){const a=tryParseAmount(row[amountCol]);if(!isNaN(a))return a>=0?'Revenue':'Expense';}return null;}
+rawData.forEach((row,i)=>{const dv=dateCol?tryParseDate(row[dateCol]):null;const date=dv||new Date(2024,0,i+1);const desc=descCol?String(row[descCol]||'').trim():'Transaction '+(i+1);const cat=catCol?String(row[catCol]||'').trim():'General';
+if(pairedFormat==='debit_credit'){const dr=tryParseAmount(row[debitCol]);const cr=tryParseAmount(row[creditCol]);if(!isNaN(dr)&&dr!==0){results.push({date,description:desc||'Debit',category:cat||'Debit',type:'Expense',amount:Math.abs(dr)});eC++;}if(!isNaN(cr)&&cr!==0){results.push({date,description:desc||'Credit',category:cat||'Credit',type:'Revenue',amount:Math.abs(cr)});rC++;}if(isNaN(dr)&&isNaN(cr))sk++;}else if(amountCol){const a=tryParseAmount(row[amountCol]);if(isNaN(a)||a===0){sk++;return;}let type=classifyRow(row);if(!type)type=a>=0?'Revenue':'Expense';results.push({date,description:desc||'Transaction '+(i+1),category:cat||'General',type,amount:Math.abs(a)});if(type==='Revenue')rC++;else eC++;}else sk++;});
+if(eC===0&&rC>10&&catCol){L('All Revenue — applying smart split','warn');const catAmts={};rawData.forEach(r=>{const c=String(r[catCol]||'').trim();const a=Math.abs(tryParseAmount(r[amountCol])||0);if(!catAmts[c])catAmts[c]=0;catAmts[c]+=a;});const sorted=Object.entries(catAmts).sort((a,b)=>b[1]-a[1]);const total=sorted.reduce((s,e)=>s+e[1],0);let cum=0;const expCats=new Set();for(const[cat,amt]of sorted){if(cum/total<0.55&&!REV_KW.some(w=>cat.toLowerCase().includes(w))){expCats.add(cat);cum+=amt;}}if(expCats.size>0){results.forEach(r=>{if(expCats.has(r.category)&&r.type==='Revenue'){r.type='Expense';eC++;rC--;}});L(`Reclassified ${expCats.size} categories`,'ok');}}
+L(`Final: ${rC} revenue + ${eC} expense`,'ok');return{data:results.sort((a,b)=>a.date-b.date),log};}
+
+function handleFileUpload(e){const file=e.target.files[0];if(!file)return;const reader=new FileReader();reader.onload=function(evt){try{let rawData;if(file.name.toLowerCase().endsWith('.csv')){const wb=XLSX.read(typeof evt.target.result==='string'?evt.target.result:new TextDecoder().decode(evt.target.result),{type:'string'});rawData=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});}else{const wb=XLSX.read(evt.target.result,{type:'array'});rawData=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});}if(!rawData||!rawData.length){showToast('No data','error');return;}const{data,log}=autoDetectAndProcess(rawData,Object.keys(rawData[0]));document.getElementById('detectionLog').innerHTML=log.map(l=>`<div class="${l.type}">${l.type==='ok'?'✓':l.type==='warn'?'⚠':'✗'} ${l.msg}</div>`).join('');if(!data.length){showToast('No transactions','error');return;}financialData=data;showDataContent();refreshAll();showToast(`Loaded ${data.length} transactions`,'success');switchSection('dashboard',document.querySelector('[data-section=dashboard]'));}catch(err){showToast('Error: '+err.message,'error');}};if(file.name.toLowerCase().endsWith('.csv'))reader.readAsText(file,'UTF-8');else reader.readAsArrayBuffer(file);e.target.value='';}
+const uploadZone=document.getElementById('uploadZone');['dragenter','dragover'].forEach(ev=>uploadZone.addEventListener(ev,e=>{e.preventDefault();uploadZone.classList.add('dragover')}));['dragleave','drop'].forEach(ev=>uploadZone.addEventListener(ev,e=>{e.preventDefault();uploadZone.classList.remove('dragover')}));uploadZone.addEventListener('drop',e=>{const f=e.dataTransfer.files[0];if(f){const i=document.getElementById('fileInput');const dt=new DataTransfer();dt.items.add(f);i.files=dt.files;i.dispatchEvent(new Event('change'));}});
+
+/* KPI */
+function updateKPIs(){const tR=financialData.filter(d=>d.type==='Revenue').reduce((s,d)=>s+d.amount,0);const tE=financialData.filter(d=>d.type==='Expense').reduce((s,d)=>s+d.amount,0);animateValue('kpiRevenue',tR);animateValue('kpiExpenses',tE);animateValue('kpiProfit',tR-tE);document.getElementById('kpiMargin').textContent=(tR>0?((tR-tE)/tR*100).toFixed(1):'0')+'%';document.getElementById('totalInflows').textContent=formatFullCurrency(Math.round(tR));document.getElementById('totalOutflows').textContent=formatFullCurrency(Math.round(tE));const n=Math.round(tR-tE);document.getElementById('netPosition').textContent=(n>=0?'':'-')+formatFullCurrency(Math.abs(n));}
+function animateValue(id,target){const el=document.getElementById(id);if(!el)return;const st=performance.now();function u(n){const p=Math.min((n-st)/800,1);el.textContent=formatCurrency(Math.round(target*(1-Math.pow(1-p,3))));if(p<1)requestAnimationFrame(u);}requestAnimationFrame(u);}
+function destroyChart(id){if(chartInstances[id]){chartInstances[id].destroy();delete chartInstances[id];}}
+
+/* All charts */
+function renderSectionCharts(s){if(!financialData.length)return;const m=getMonthlyData();const ec=getCategoryData('Expense');const rc=getCategoryData('Revenue');switch(s){case'dashboard':renderDashCharts(m,ec);break;case'revenue':renderRevCharts(m);break;case'profit':renderProfCharts(m);break;case'categories':renderCatCharts(ec,rc);break;case'cashflow':renderCFCharts(m);break;case'health':renderHealth(m);break;case'forecast':renderForecast(m);break;case'leaks':renderLeaks(ec);break;case'benchmark':renderBenchmark();break;case'assistant':initChat();break;}}
+function renderDashCharts(m,ec){const l=m.map(x=>x.label);destroyChart('d1');chartInstances['d1']=new Chart(document.getElementById('dashRevExpChart').getContext('2d'),{type:'bar',data:{labels:l,datasets:[{label:'Revenue',data:m.map(x=>x.revenue),backgroundColor:COLORS.emerald,borderRadius:6},{label:'Expenses',data:m.map(x=>x.expenses),backgroundColor:COLORS.rose,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true}}},scales:{y:{ticks:{callback:v=>formatCurrency(v)}},x:{grid:{display:false}}}}});destroyChart('d2');chartInstances['d2']=new Chart(document.getElementById('dashDonutChart').getContext('2d'),{type:'doughnut',data:{labels:ec.map(x=>x.category),datasets:[{data:ec.map(x=>x.amount),backgroundColor:CHART_COLORS}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'right',labels:{usePointStyle:true,font:{size:11}}}}}});}
+function renderRevCharts(m){const l=m.map(x=>x.label);destroyChart('r1');chartInstances['r1']=new Chart(document.getElementById('revenueBarChart').getContext('2d'),{type:'bar',data:{labels:l,datasets:[{label:'Revenue',data:m.map(x=>x.revenue),backgroundColor:COLORS.emerald,borderRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>formatCurrency(v)}},x:{grid:{display:false}}}}});destroyChart('r2');chartInstances['r2']=new Chart(document.getElementById('expenseBarChart').getContext('2d'),{type:'bar',data:{labels:l,datasets:[{label:'Expenses',data:m.map(x=>x.expenses),backgroundColor:COLORS.rose,borderRadius:8}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>formatCurrency(v)}},x:{grid:{display:false}}}}});destroyChart('r3');chartInstances['r3']=new Chart(document.getElementById('revExpCompareChart').getContext('2d'),{type:'bar',data:{labels:l,datasets:[{label:'Revenue',data:m.map(x=>x.revenue),backgroundColor:COLORS.emerald,borderRadius:6},{label:'Expenses',data:m.map(x=>x.expenses),backgroundColor:COLORS.rose,borderRadius:6}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true}}},scales:{y:{ticks:{callback:v=>formatCurrency(v)}},x:{grid:{display:false}}}}});}
+function renderProfCharts(m){const l=m.map(x=>x.label),p=m.map(x=>x.profit),mg=m.map(x=>x.revenue>0?(x.profit/x.revenue*100):0);document.getElementById('avgProfitMargin').textContent=(mg.length?mg.reduce((a,b)=>a+b,0)/mg.length:0).toFixed(1)+'%';document.getElementById('bestMonth').textContent=l[p.indexOf(Math.max(...p))]||'-';destroyChart('p1');const c1=document.getElementById('profitTrendChart').getContext('2d');const g1=c1.createLinearGradient(0,0,0,320);g1.addColorStop(0,'rgba(5,150,105,0.18)');g1.addColorStop(1,'rgba(255,255,255,0)');chartInstances['p1']=new Chart(c1,{type:'line',data:{labels:l,datasets:[{label:'Profit',data:p,borderColor:COLORS.emerald,backgroundColor:g1,fill:true,tension:.4,pointRadius:5,pointBackgroundColor:COLORS.emerald,pointBorderColor:'#ffffff',pointBorderWidth:2,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>formatCurrency(v)}},x:{grid:{display:false}}}}});destroyChart('p2');chartInstances['p2']=new Chart(document.getElementById('profitMarginChart').getContext('2d'),{type:'bar',data:{labels:l,datasets:[{label:'Margin %',data:mg.map(x=>Math.round(x*10)/10),backgroundColor:mg.map(x=>x>=0?COLORS.emerald:COLORS.rose),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v+'%'}},x:{grid:{display:false}}}}});const cm=[];p.reduce((s,v)=>{s+=v;cm.push(s);return s;},0);destroyChart('p3');const c3=document.getElementById('cumulativeProfitChart').getContext('2d');const g3=c3.createLinearGradient(0,0,0,260);g3.addColorStop(0,'rgba(217,119,6,0.15)');g3.addColorStop(1,'rgba(255,255,255,0)');chartInstances['p3']=new Chart(c3,{type:'line',data:{labels:l,datasets:[{label:'Cumulative',data:cm,borderColor:COLORS.gold,backgroundColor:g3,fill:true,tension:.4,pointRadius:4,pointBackgroundColor:COLORS.gold,pointBorderColor:'#ffffff',pointBorderWidth:2,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>formatCurrency(v)}},x:{grid:{display:false}}}}});}
+function renderCatCharts(ec,rc){const tE=ec.reduce((s,c)=>s+c.amount,0);destroyChart('c1');chartInstances['c1']=new Chart(document.getElementById('expCatChart').getContext('2d'),{type:'doughnut',data:{labels:ec.map(x=>x.category),datasets:[{data:ec.map(x=>x.amount),backgroundColor:CHART_COLORS}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'right',labels:{usePointStyle:true,font:{size:11}}}}}});destroyChart('c2');chartInstances['c2']=new Chart(document.getElementById('revCatChart').getContext('2d'),{type:'doughnut',data:{labels:rc.map(x=>x.category),datasets:[{data:rc.map(x=>x.amount),backgroundColor:CHART_COLORS.reverse()}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'right',labels:{usePointStyle:true,font:{size:11}}}}}});document.getElementById('categoryBreakdown').innerHTML=ec.map((c,i)=>{const pct=tE>0?(c.amount/tE*100):0;return`<div style="margin-bottom:14px"><div style="display:flex;justify-content:space-between;margin-bottom:6px"><span style="font-size:13px;font-weight:600">${c.category}</span><span style="font-size:13px;color:var(--text-secondary)">${formatFullCurrency(c.amount)} (${pct.toFixed(1)}%)</span></div><div style="height:8px;background:var(--bg-secondary);border-radius:4px;overflow:hidden"><div style="height:100%;width:${pct}%;background:${CHART_COLORS[i%CHART_COLORS.length]};border-radius:4px;transition:width .8s"></div></div></div>`;}).join('');}
+function renderCFCharts(m){destroyChart('cf');chartInstances['cf']=new Chart(document.getElementById('cashFlowChart').getContext('2d'),{type:'bar',data:{labels:m.map(x=>x.label),datasets:[{label:'Inflows',data:m.map(x=>x.revenue),backgroundColor:COLORS.emerald,borderRadius:6},{label:'Outflows',data:m.map(x=>-x.expenses),backgroundColor:COLORS.rose,borderRadius:6},{label:'Net',data:m.map(x=>x.profit),type:'line',borderColor:COLORS.gold,tension:.4,pointRadius:5,pointBackgroundColor:COLORS.gold,pointBorderColor:'#ffffff',pointBorderWidth:2,borderWidth:2.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'top',labels:{usePointStyle:true}}},scales:{y:{ticks:{callback:v=>formatCurrency(v)}},x:{grid:{display:false}}}}});}
+function renderHealth(m){if(m.length<2)return;const tR=m.reduce((s,x)=>s+x.revenue,0),tE=m.reduce((s,x)=>s+x.expenses,0),pm=tR>0?(tR-tE)/tR:0;let pmS=Math.max(0,Math.min(25,pm*100));const mid=Math.floor(m.length/2);const fR=m.slice(0,mid).reduce((s,x)=>s+x.revenue,0)||1;const sR=m.slice(mid).reduce((s,x)=>s+x.revenue,0);const rg=(sR-fR)/fR;let gS=Math.max(0,Math.min(25,rg*50+12.5));const fE=m.slice(0,mid).reduce((s,x)=>s+x.expenses,0)||1;const sE=m.slice(mid).reduce((s,x)=>s+x.expenses,0);const eg=(sE-fE)/fE;let eS=Math.max(0,Math.min(25,25-(eg-rg)*100));const pos=m.filter(x=>x.profit>0).length;let stS=(pos/m.length)*25;const ts=Math.round(pmS+gS+eS+stS);const circ=2*Math.PI*80;const off=circ-(ts/100)*circ;const circle=document.getElementById('healthCircle');circle.style.strokeDashoffset=off;const col=ts>75?COLORS.emerald:ts>40?COLORS.gold:COLORS.rose;circle.style.stroke=col;document.getElementById('healthScoreVal').textContent=ts;document.getElementById('healthScoreVal').style.color=col;const badge=document.getElementById('healthRiskBadge');if(ts>75){badge.textContent='Low Risk';badge.style.background='var(--accent-emerald-dim)';badge.style.color='var(--accent-emerald)';}else if(ts>40){badge.textContent='Medium Risk';badge.style.background='var(--accent-gold-dim)';badge.style.color='var(--accent-gold)';}else{badge.textContent='High Risk';badge.style.background='var(--accent-rose-dim)';badge.style.color='var(--accent-rose)';}const str=[],wk=[];if(pm>0.2)str.push(`Strong profit margin (${(pm*100).toFixed(1)}%)`);else wk.push(`Low profit margin (${(pm*100).toFixed(1)}%)`);if(rg>0.05)str.push(`Revenue growing (${(rg*100).toFixed(1)}%)`);else wk.push('Revenue stagnant/declining');if(eg<rg)str.push('Good expense control');else wk.push('Expenses growing faster than revenue');if(pos>m.length*.8)str.push('Consistent positive cash flow');else wk.push(`${m.length-pos} negative cash flow months`);document.getElementById('healthStrengths').innerHTML=str.map(s=>`<li><i class="fas fa-check" style="color:var(--accent-emerald);margin-right:8px;font-size:10px"></i>${s}</li>`).join('');document.getElementById('healthWeaknesses').innerHTML=wk.map(s=>`<li><i class="fas fa-times" style="color:var(--accent-rose);margin-right:8px;font-size:10px"></i>${s}</li>`).join('');}
+function renderForecast(m){if(m.length<2)return;const aR=m.reduce((s,x)=>s+x.revenue,0)/m.length;const aE=m.reduce((s,x)=>s+x.expenses,0)/m.length;const lc=m[m.length-1].profit;const d30=lc+(aR-aE);const d60=d30+(aR-aE);const d90=d60+(aR-aE);document.getElementById('projectedCash90').textContent=formatCurrency(d90);document.getElementById('projectedCash90').style.color=d90>=0?'var(--accent-emerald)':'var(--accent-rose)';const al=[];if(d90<0)al.push(`<div style="margin-bottom:12px;padding:10px;background:var(--accent-rose-dim);border-radius:8px;color:var(--accent-rose);font-size:13px"><i class="fas fa-exclamation-triangle" style="margin-right:8px"></i>Cash flow projected negative within 90 days.</div>`);if(aE>aR)al.push(`<div style="margin-bottom:12px;padding:10px;background:var(--accent-gold-dim);border-radius:8px;color:var(--accent-gold);font-size:13px"><i class="fas fa-info-circle" style="margin-right:8px"></i>Average expenses exceed revenue.</div>`);if(!al.length)al.push(`<div style="font-size:13px;color:var(--text-secondary)">No immediate risks in 90-day window.</div>`);document.getElementById('forecastAlerts').innerHTML=al.join('');const hl=m.map(x=>x.label);const fl=['+30d','+60d','+90d'];const labels=[...hl,...fl];const hp=m.map(x=>x.profit);const fp=new Array(hp.length-1).fill(null);fp.push(hp[hp.length-1],d30,d60,d90);destroyChart('fc');chartInstances['fc']=new Chart(document.getElementById('forecastChart').getContext('2d'),{type:'line',data:{labels,datasets:[{label:'Historical',data:hp,borderColor:COLORS.emerald,backgroundColor:'rgba(5,150,105,0.08)',fill:true,tension:.3},{label:'Forecast',data:fp,borderColor:COLORS.sky,borderDash:[5,5],backgroundColor:'rgba(2,132,199,0.08)',fill:true,tension:.3}]},options:{responsive:true,maintainAspectRatio:false,scales:{y:{ticks:{callback:v=>formatCurrency(v)}},x:{grid:{display:false}}}}});}
+function renderLeaks(ec){const m=getMonthlyData();const h=[];const tE=financialData.filter(d=>d.type==='Expense').reduce((s,d)=>s+d.amount,0);if(m.length>=2){const aE=m.reduce((s,x)=>s+x.expenses,0)/m.length;const lE=m[m.length-1].expenses;if(lE>aE*1.5)h.push(`<div class="leak-card leak-high"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong style="color:var(--accent-rose)">Spending Spike</strong><span class="badge" style="background:var(--accent-rose-dim);color:var(--accent-rose)">High</span></div><p style="font-size:13px;color:var(--text-secondary)">Last month (${formatCurrency(lE)}) was ${((lE/aE-1)*100).toFixed(0)}% above avg (${formatCurrency(aE)}).</p></div>`);}const rec={};financialData.filter(d=>d.type==='Expense').forEach(d=>{const k=d.category+'_'+d.amount;if(!rec[k])rec[k]={cat:d.category,amt:d.amount,n:0};rec[k].n++;});Object.values(rec).filter(r=>r.n>=3).forEach(r=>{h.push(`<div class="leak-card leak-med"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong style="color:var(--accent-gold)">Recurring Charge</strong><span class="badge" style="background:var(--accent-gold-dim);color:var(--accent-gold)">Review</span></div><p style="font-size:13px;color:var(--text-secondary)">${formatCurrency(r.amt)} in "${r.cat}" appears ${r.n}x. Verify necessity.</p></div>`);});if(ec.length>0&&tE>0){const tp=(ec[0].amount/tE*100).toFixed(1);if(tp>40)h.push(`<div class="leak-card leak-high"><div style="display:flex;justify-content:space-between;margin-bottom:8px"><strong style="color:var(--accent-rose)">Category Overspend</strong><span class="badge" style="background:var(--accent-rose-dim);color:var(--accent-rose)">High</span></div><p style="font-size:13px;color:var(--text-secondary)">"${ec[0].category}" = ${tp}% of expenses.</p></div>`);}document.getElementById('leakResults').innerHTML=h.length?h.join(''):'<div style="text-align:center;padding:32px;color:var(--accent-emerald)"><i class="fas fa-shield-alt" style="font-size:32px;margin-bottom:12px;display:block"></i>No major leaks detected!</div>';}
+const IND={saas:{name:'SaaS',pm:20,rg:25,mk:30,sl:40},retail:{name:'Retail',pm:8,rg:10,mk:20,sl:25},services:{name:'Services',pm:15,rg:8,mk:10,sl:50},manufacturing:{name:'Manufacturing',pm:10,rg:5,mk:5,sl:30}};
+function renderBenchmark(){if(!financialData.length)return;const ind=IND[document.getElementById('industrySelect').value];const tR=financialData.filter(d=>d.type==='Revenue').reduce((s,d)=>s+d.amount,0);const tE=financialData.filter(d=>d.type==='Expense').reduce((s,d)=>s+d.amount,0);const mm=tR>0?((tR-tE)/tR*100):0;const m=getMonthlyData();let mg=0;if(m.length>1&&m[0].revenue>0)mg=((m[m.length-1].revenue-m[0].revenue)/m[0].revenue*100);const mk=getCategoryData('Expense').find(c=>/marketing|advertis/i.test(c.category));const sl=getCategoryData('Expense').find(c=>/salary|payroll|wage/i.test(c.category));const mmk=mk&&tE>0?(mk.amount/tE*100):0;const msl=sl&&tE>0?(sl.amount/tE*100):0;destroyChart('bm');chartInstances['bm']=new Chart(document.getElementById('benchmarkChart').getContext('2d'),{type:'radar',data:{labels:['Margin %','Growth %','Marketing %','Salaries %'],datasets:[{label:'You',data:[mm,mg,mmk,msl],borderColor:COLORS.emerald,backgroundColor:'rgba(5,150,105,0.15)',pointBackgroundColor:COLORS.emerald},{label:ind.name+' Avg',data:[ind.pm,ind.rg,ind.mk,ind.sl],borderColor:COLORS.gold,backgroundColor:'rgba(217,119,6,0.15)',pointBackgroundColor:COLORS.gold}]},options:{responsive:true,maintainAspectRatio:false,scales:{r:{angleLines:{color:'rgba(226,232,240,0.8)'},grid:{color:'rgba(226,232,240,0.8)'},pointLabels:{color:'#64748b'},ticks:{display:false}}}}});const ins=[];if(mm>ind.pm)ins.push(`<span style="color:var(--accent-emerald)">Your margin (${mm.toFixed(1)}%) beats ${ind.name} avg (${ind.pm}%).</span>`);else ins.push(`<span style="color:var(--accent-rose)">Your margin (${mm.toFixed(1)}%) is below ${ind.name} avg (${ind.pm}%).</span>`);document.getElementById('benchmarkInsights').innerHTML=ins.map(i=>`<p style="margin-bottom:12px">${i}</p>`).join('');}
+
+/* ===== ENHANCED AI CFO ASSISTANT ===== */
+let chatInitialized = false;
+
+function initChat() {
+    if (chatInitialized) return;
+    chatInitialized = true;
+    const msgContainer = document.getElementById('chatMessages');
+    const hasData = financialData.length > 0;
+
+    const welcomeHTML = hasData
+        ? `Welcome back! I can see you've loaded <strong>${financialData.length} transactions</strong>. I'm your AI CFO — I can analyze your data, navigate you around the portal, or suggest business strategies.<br><br>What would you like to explore?`
+        : `Welcome to <strong>FinLens</strong>! I'm your AI CFO Assistant. I can help you:<br><br>
+        <strong>1. Navigate the app</strong> — "How do I upload data?"<br>
+        <strong>2. Analyze finances</strong> — "Why is profit down?"<br>
+        <strong>3. Suggest strategies</strong> — "How can I cut costs?"<br>
+        <strong>4. Explain features</strong> — "What does Health Score mean?"<br><br>
+        ${!hasData ? 'Start by <span class="nav-link" onclick="switchSection(\'upload\',document.querySelector(\'[data-section=upload]\')">uploading your CSV file</span>, then ask me anything!' : ''}`;
+
+    addBotBubble(welcomeHTML, getWelcomeChips());
+}
+
+function getWelcomeChips() {
+    const hasData = financialData.length > 0;
+    if (hasData) {
+        return [
+            { label: 'How am I doing?', query: 'How is my business doing overall?' },
+            { label: 'Where am I overspending?', query: 'Where am I overspending?' },
+            { label: 'What is Health Score?', query: 'What does the Health Score mean?' },
+            { label: 'Show me forecast', query: 'Take me to the cash flow forecast' },
+            { label: 'Detect expense leaks', query: 'Detect expense leaks in my data' },
+            { label: 'Business strategy', query: 'What business strategies do you suggest?' }
+        ];
+    }
+    return [
+        { label: 'How to upload?', query: 'How do I upload my financial data?' },
+        { label: 'What can you do?', query: 'What can you help me with?' },
+        { label: 'App features', query: 'What features does FinLens have?' },
+        { label: 'CSV format help', query: 'What format should my CSV be in?' },
+        { label: 'Getting started', query: 'I am new, where do I start?' }
+    ];
+}
+
+function addBotBubble(html, chips) {
+    const msgContainer = document.getElementById('chatMessages');
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble bot';
+    bubble.innerHTML = html;
+    if (chips && chips.length) {
+        const chipContainer = document.createElement('div');
+        chipContainer.className = 'quick-chips';
+        chips.forEach(c => {
+            const chip = document.createElement('span');
+            chip.className = 'chip';
+            chip.textContent = c.label;
+            chip.onclick = () => { sendChatMessage(c.query); };
+            chipContainer.appendChild(chip);
+        });
+        bubble.appendChild(chipContainer);
+    }
+    msgContainer.appendChild(bubble);
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+}
+
+function addUserBubble(text) {
+    const msgContainer = document.getElementById('chatMessages');
+    const bubble = document.createElement('div');
+    bubble.className = 'chat-bubble user';
+    bubble.textContent = text;
+    msgContainer.appendChild(bubble);
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+}
+
+function showTyping() {
+    const msgContainer = document.getElementById('chatMessages');
+    const typing = document.createElement('div');
+    typing.className = 'typing-indicator';
+    typing.id = 'typingIndicator';
+    typing.innerHTML = '<span></span><span></span><span></span>';
+    msgContainer.appendChild(typing);
+    msgContainer.scrollTop = msgContainer.scrollHeight;
+}
+
+function hideTyping() {
+    const t = document.getElementById('typingIndicator');
+    if (t) t.remove();
+}
+
+function sendChat() {
+    const input = document.getElementById('chatInput');
+    const q = input.value.trim();
+    if (!q) return;
+    sendChatMessage(q);
+    input.value = '';
+}
+
+function sendChatMessage(q) {
+    addUserBubble(q);
+    showTyping();
+    setTimeout(() => {
+        hideTyping();
+        const response = processCFOQuery(q);
+        addBotBubble(response.html, response.chips);
+    }, 600 + Math.random() * 400);
+}
+
+function clearChat() {
+    chatInitialized = false;
+    document.getElementById('chatMessages').innerHTML = '';
+    initChat();
+}
+
+/* Navigation helper */
+function navTo(section) {
+    const el = document.querySelector(`[data-section="${section}"]`);
+    if (el) switchSection(section, el);
+}
+
+/* THE BIG BRAIN */
+function processCFOQuery(q) {
+    const ql = q.toLowerCase().trim();
+    const hasData = financialData.length > 0;
+    const tR = hasData ? financialData.filter(d=>d.type==='Revenue').reduce((s,d)=>s+d.amount,0) : 0;
+    const tE = hasData ? financialData.filter(d=>d.type==='Expense').reduce((s,d)=>s+d.amount,0) : 0;
+    const monthly = hasData ? getMonthlyData() : [];
+    const ec = hasData ? getCategoryData('Expense') : [];
+    const rc = hasData ? getCategoryData('Revenue') : [];
+
+    /* ===== INTENT: NAVIGATION ===== */
+    if (/upload|import|load|csv|excel|file/.test(ql) && (/how|where|want|need|go|navigat|show|take|bring/.test(ql) || ql.length < 30)) {
+        return {
+            html: `To upload your financial data, go to the <span class="nav-link" onclick="navTo('upload')">Upload Data</span> section. You can drag & drop a <strong>.CSV</strong> or <strong>.Excel</strong> file there.<br><br>I auto-detect columns like Date, Amount, Category, and Type — so your file can be in almost any format. Just make sure it has at least a <strong>Date</strong> and <strong>Amount</strong> column.<br><br>Would you like me to take you there?`,
+            chips: [
+                { label: 'Take me there', query: 'Go to upload section' },
+                { label: 'CSV format help', query: 'What format should my CSV be in?' },
+                { label: 'What features exist?', query: 'What features does FinLens have?' }
+            ]
+        };
+    }
+    if (/go to|take me|navigate|bring me|open|show me (?:the |my )?(?:dash|revenue|profit|categor|cash|health|forecast|leak|benchmark|report)/.test(ql)) {
+        const sectionMap = {
+            dash:'dashboard', revenue:'revenue', profit:'profit', categor:'categories', cash:'cashflow',
+            health:'health', forecast:'forecast', leak:'leaks', benchmark:'benchmark', report:'report'
+        };
+        const found = Object.entries(sectionMap).find(([k]) => ql.includes(k));
+        const section = found ? found[1] : 'dashboard';
+        const names = {dashboard:'Dashboard',revenue:'Revenue & Expenses',profit:'Profit Trends',categories:'Category Analysis',cashflow:'Cash Flow',health:'Health Score',forecast:'Cash Forecast',leaks:'Leak Detection',benchmark:'Benchmarks',report:'PDF Report'};
+        return {
+            html: `Taking you to <strong>${names[section]}</strong> now! <span class="nav-link" onclick="navTo('${section}')">Click here</span> if you're not redirected.<br><br>On that page, you'll be able to ${section === 'revenue' ? 'see monthly revenue and expense comparisons' : section === 'profit' ? 'track your profit trajectory and margins' : section === 'health' ? 'see your financial health score out of 100' : section === 'forecast' ? 'view 30/60/90 day cash projections' : section === 'leaks' ? 'detect hidden expense leaks' : section === 'benchmark' ? 'compare against industry averages' : section === 'report' ? 'generate and download a PDF report' : 'view your key metrics'}.`,
+            chips: [{ label: 'What else can I explore?', query: 'What other features should I check out?' }]
+        };
+    }
+
+    /* ===== INTENT: FEATURE DISCOVERY ===== */
+    if (/what can you|what do you|help me with|features|capabilit|function|what are/.test(ql)) {
+        return {
+            html: `I'm a full-featured AI CFO! Here's what I can help with:<br><br>
+            <strong>Financial Analysis</strong><br>
+            • Analyze revenue, expenses, and profit trends<br>
+            • Identify overspending and expense leaks<br>
+            • Forecast cash flow for the next 90 days<br><br>
+            <strong>Navigation & Onboarding</strong><br>
+            • Guide you to any section of the app<br>
+            • Explain what each feature does<br>
+            • Help you get started with your data<br><br>
+            <strong>Business Strategy</strong><br>
+            • Suggest cost-cutting strategies<br>
+            • Recommend revenue growth ideas<br>
+            • Compare your performance to industry benchmarks<br><br>
+            <strong>Health Monitoring</strong><br>
+            • Calculate your financial health score<br>
+            • Identify strengths and weaknesses<br>
+            • Alert you to financial risks<br><br>
+            Just ask me anything!`,
+            chips: [
+                { label: 'How to upload data?', query: 'How do I upload my financial data?' },
+                { label: 'What is Health Score?', query: 'What does the Health Score mean?' },
+                { label: 'Cost cutting ideas', query: 'Suggest cost cutting strategies' },
+                { label: 'Revenue growth', query: 'How can I grow my revenue?' }
+            ]
+        };
+    }
+
+    if (/feature|section|page|tab|menu|sidebar/.test(ql) && /what|which|how many|list|explain/.test(ql)) {
+        return {
+            html: `FinLens has <strong>10 powerful sections</strong>:<br><br>
+            1. <span class="nav-link" onclick="navTo('dashboard')"><strong>Dashboard</strong></span> — KPI overview and key charts<br>
+            2. <span class="nav-link" onclick="navTo('upload')"><strong>Upload Data</strong></span> — Import CSV/Excel files<br>
+            3. <span class="nav-link" onclick="navTo('revenue')"><strong>Revenue & Expenses</strong></span> — Monthly comparisons<br>
+            4. <span class="nav-link" onclick="navTo('profit')"><strong>Profit Trends</strong></span> — Trajectory and margins<br>
+            5. <span class="nav-link" onclick="navTo('categories')"><strong>Category Analysis</strong></span> — Spending breakdown<br>
+            6. <span class="nav-link" onclick="navTo('cashflow')"><strong>Cash Flow</strong></span> — Inflows and outflows<br>
+            7. <span class="nav-link" onclick="navTo('health')"><strong>Health Score</strong></span> — 0-100 business fitness<br>
+            8. <span class="nav-link" onclick="navTo('forecast')"><strong>Cash Forecast</strong></span> — 30/60/90 day predictions<br>
+            9. <span class="nav-link" onclick="navTo('leaks')"><strong>Leak Detection</strong></span> — Find hidden expenses<br>
+            10. <span class="nav-link" onclick="navTo('benchmark')"><strong>Benchmarks</strong></span> — Industry comparison<br><br>
+            You also have a <span class="nav-link" onclick="navTo('report')"><strong>PDF Report</strong></span> generator. Click any link to navigate!`,
+            chips: [
+                { label: 'Explain Health Score', query: 'What does the Health Score mean?' },
+                { label: 'Explain Leak Detection', query: 'How does expense leak detection work?' }
+            ]
+        };
+    }
+
+    /* ===== INTENT: ONBOARDING ===== */
+    if (/new|start|begin|first|getting started|beginner|guide/.test(ql)) {
+        return {
+            html: `Great to have you here! Here's your quick-start path:<br><br>
+            <strong>Step 1:</strong> <span class="nav-link" onclick="navTo('upload')">Upload your CSV file</span> with financial data<br>
+            <strong>Step 2:</strong> Check the <span class="nav-link" onclick="navTo('dashboard')">Dashboard</span> for an instant overview<br>
+            <strong>Step 3:</strong> View your <span class="nav-link" onclick="navTo('health')">Health Score</span> to see how you're doing<br>
+            <strong>Step 4:</strong> Explore <span class="nav-link" onclick="navTo('leaks')">Leak Detection</span> to find savings<br>
+            <strong>Step 5:</strong> Check <span class="nav-link" onclick="navTo('forecast')">Cash Forecast</span> for upcoming risks<br><br>
+            I'll be here to answer questions at every step!`,
+            chips: [
+                { label: 'Upload my data now', query: 'Take me to upload section' },
+                { label: 'What format for CSV?', query: 'What format should my CSV be in?' }
+            ]
+        };
+    }
+
+    /* ===== INTENT: EXPLAIN FEATURES ===== */
+    if (/health.?score|score.?mean|score.?work/.test(ql)) {
+        return {
+            html: `The <strong>Financial Health Score</strong> rates your business from 0-100 based on 4 factors:<br><br>
+            • <strong>Profit Margin (25pts)</strong> — How much profit you keep from revenue<br>
+            • <strong>Revenue Growth (25pts)</strong> — Are sales growing or shrinking?<br>
+            • <strong>Expense Control (25pts)</strong> — Are costs growing slower than revenue?<br>
+            • <strong>Cash Flow Stability (25pts)</strong> — Consistency of positive cash flow<br><br>
+            Scores above 75 = <span style="color:var(--accent-emerald)">Low Risk</span>, 40-75 = <span style="color:var(--accent-gold)">Medium Risk</span>, below 40 = <span style="color:var(--accent-rose)">High Risk</span>.<br><br>
+            ${hasData ? 'Your current score is on the <span class="nav-link" onclick="navTo(\'health\')">Health Score</span> page. Want me to take you there?' : 'Upload your data and I\'ll calculate it for you!'}`,
+            chips: [
+                { label: 'Show my Health Score', query: 'Take me to the Health Score' },
+                { label: 'How to improve score?', query: 'How can I improve my financial health?' }
+            ]
+        };
+    }
+
+    if (/leak.?detect|detect.?leak|how.*leak|find.*leak|expense.*leak/.test(ql)) {
+        return {
+            html: `<strong>Expense Leak Detection</strong> scans your data for 3 types of problems:<br><br>
+            1. <strong>Spending Spikes</strong> — Months where expenses jump 50%+ above average<br>
+            2. <strong>Recurring Charges</strong> — Same amount in the same category appearing 3+ times (likely subscriptions you may not need)<br>
+            3. <strong>Category Overspending</strong> — A single category consuming 40%+ of total expenses<br><br>
+            ${hasData ? 'I can check your data right now on the <span class="nav-link" onclick="navTo(\'leaks\')">Leak Detection</span> page!' : 'Upload your data first, then I\'ll scan for leaks!'}`,
+            chips: [
+                { label: 'Scan for leaks now', query: 'Take me to leak detection' },
+                { label: 'Cost cutting ideas', query: 'Suggest cost cutting strategies' }
+            ]
+        };
+    }
+
+    if (/format|csv.*format|column|template|should.*csv/.test(ql)) {
+        return {
+            html: `Your CSV can be in <strong>almost any format</strong> — I auto-detect columns! But ideally include:<br><br>
+            • <strong>Date</strong> — Any date format (MM/DD/YYYY, DD-MM-YYYY, etc.)<br>
+            • <strong>Amount</strong> — With or without $ signs, commas, or negatives<br>
+            • <strong>Category</strong> — Like "Marketing", "Salary", "Sales"<br>
+            • <strong>Type</strong> — "Revenue" or "Expense" (optional — I can infer it)<br>
+            • <strong>Description</strong> — Transaction memo (optional)<br><br>
+            I also support <strong>Debit/Credit</strong> or <strong>Income/Expense</strong> paired columns. If your CSV has all positive numbers with no type column, I'll intelligently split them using category keywords and spending patterns.`,
+            chips: [
+                { label: 'Upload my file', query: 'Take me to upload section' },
+                { label: 'What features exist?', query: 'What features does FinLens have?' }
+            ]
+        };
+    }
+
+    /* ===== INTENT: STRATEGY / SUGGESTIONS ===== */
+    if (/strateg|suggest|idea|recommend|improv|grow|cut|reduc|save|optim/.test(ql)) {
+        if (!hasData) return {
+            html: `I'd love to give you personalized strategies! Please <span class="nav-link" onclick="navTo('upload')">upload your financial data</span> first so I can analyze your specific situation.<br><br>In general, businesses should focus on:<br>• Keeping profit margins above 15%<br>• Ensuring expenses grow slower than revenue<br>• Maintaining 3-6 months of cash reserves<br>• Diversifying revenue sources`,
+            chips: [{ label: 'Upload data now', query: 'Take me to upload section' }]
+        };
+
+        const pm = tR > 0 ? ((tR - tE) / tR * 100) : 0;
+        const strategies = [];
+        if (pm < 15) strategies.push(`<strong>Improve margins:</strong> Your margin is ${pm.toFixed(1)}%. Target 15%+ by renegotiating vendor contracts and reducing discretionary spending.`);
+        if (ec.length > 0) strategies.push(`<strong>Optimize ${ec[0].category}:</strong> At ${formatCurrency(ec[0].amount)}, this is your biggest expense. Explore automation or alternative providers.`);
+        strategies.push(`<strong>Diversify revenue:</strong> ${rc.length <= 2 ? 'You rely on very few revenue streams. Consider adding new products/services.' : 'Good revenue diversification across ' + rc.length + ' streams.'}`);
+        if (monthly.length > 1) {
+            const last = monthly[monthly.length - 1];
+            const prev = monthly[monthly.length - 2];
+            if (last.revenue < prev.revenue) strategies.push(`<strong>Reverse revenue decline:</strong> Revenue dropped from ${formatCurrency(prev.revenue)} to ${formatCurrency(last.revenue)}. Invest in marketing or adjust pricing.`);
+        }
+        strategies.push(`<strong>Build reserves:</strong> Aim for 3-6 months of operating expenses in cash reserves for unexpected downturns.`);
+
+        return {
+            html: `Based on your financial data, here are my strategic recommendations:<br><br>${strategies.join('<br><br>')}`,
+            chips: [
+                { label: 'Check Health Score', query: 'Take me to Health Score' },
+                { label: 'Detect leaks', query: 'Scan for expense leaks' },
+                { label: 'View forecast', query: 'Show me the cash forecast' }
+            ]
+        };
+    }
+
+    /* ===== INTENT: FINANCIAL ANALYSIS (requires data) ===== */
+    if (!hasData) {
+        return {
+            html: `I need your financial data to answer that! Please <span class="nav-link" onclick="navTo('upload')">upload a CSV file</span> first, then I can analyze your revenue, expenses, profit, and more.`,
+            chips: [{ label: 'Upload now', query: 'Take me to upload section' }, { label: 'CSV format help', query: 'What format should my CSV be in?' }]
+        };
+    }
+
+    if (/profit.*(down|low|decreas|drop|fall|declin)/.test(ql) || /why.*profit/.test(ql)) {
+        const last = monthly[monthly.length - 1];
+        const prev = monthly.length > 1 ? monthly[monthly.length - 2] : null;
+        let analysis = `Your current profit margin is <strong>${(tR > 0 ? ((tR - tE) / tR * 100).toFixed(1) : '0')}%</strong>. `;
+        if (prev && last.profit < prev.profit) {
+            analysis += `Profit decreased by <strong>${formatCurrency(prev.profit - last.profit)}</strong> compared to last month. This was primarily driven by a ${last.revenue < prev.revenue ? '<strong>drop in revenue</strong>' : '<strong>spike in expenses</strong>'}.`;
+            if (ec.length > 0) analysis += `<br><br>I recommend reviewing your <strong>${ec[0].category}</strong> category for potential cost optimization.`;
+        } else if (prev) {
+            analysis += `Actually, profit improved from ${formatCurrency(prev.profit)} to ${formatCurrency(last.profit)}! Keep it up.`;
+        }
+        return { html: analysis, chips: [{ label: 'Check forecast', query: 'Show me the cash forecast' }, { label: 'Detect leaks', query: 'Scan for expense leaks' }] };
+    }
+
+    if (/overspend|spending|cost|expens/.test(ql)) {
+        let analysis = '';
+        if (ec.length > 0) {
+            const tEPct = tE > 0 ? (ec[0].amount / tE * 100).toFixed(1) : '0';
+            analysis = `You're spending the most on <strong>${ec[0].category}</strong> (${formatCurrency(ec[0].amount)}), which is <strong>${tEPct}%</strong> of total expenses.`;
+            if (ec.length > 1) analysis += ` Second highest: <strong>${ec[1].category}</strong> at ${formatCurrency(ec[1].amount)}.`;
+            analysis += `<br><br>My suggestions:<br>• Negotiate bulk discounts with vendors<br>• Automate manual processes in ${ec[0].category}<br>• Set departmental budget caps<br>• Review subscriptions quarterly`;
+        } else analysis = 'No expense categories detected in your data.';
+        return { html: analysis, chips: [{ label: 'Detect leaks', query: 'Scan for expense leaks' }, { label: 'Benchmark comparison', query: 'Take me to benchmarks' }] };
+    }
+
+    if (/revenue|sales|income|earning/.test(ql)) {
+        let analysis = `Your total revenue is <strong>${formatCurrency(tR)}</strong>.`;
+        if (monthly.length > 1) {
+            const last = monthly[monthly.length - 1];
+            const prev = monthly[monthly.length - 2];
+            analysis += ` Over the last two months: ${formatCurrency(prev.revenue)} → ${formatCurrency(last.revenue)}, a <strong>${last.revenue > prev.revenue ? 'positive' : 'negative'}</strong> trend.`;
+        }
+        analysis += `<br><br>To accelerate revenue:<br>• Upsell to existing customers<br>• Expand to new market segments<br>• Optimize pricing strategy<br>• Invest in high-ROI marketing channels`;
+        return { html: analysis, chips: [{ label: 'Revenue charts', query: 'Take me to revenue section' }, { label: 'Growth strategy', query: 'Suggest revenue growth strategies' }] };
+    }
+
+    if (/cash|burn|runway|liquidity|forecast/.test(ql)) {
+        const avgBurn = monthly.slice(-3).reduce((s, m) => s + m.expenses, 0) / Math.min(3, monthly.length);
+        const avgIncome = monthly.slice(-3).reduce((s, m) => s + m.revenue, 0) / Math.min(3, monthly.length);
+        const netBurn = avgBurn - avgIncome;
+        let analysis = '';
+        if (netBurn > 0) analysis = `Your average monthly burn rate is <strong>${formatCurrency(netBurn)}</strong>. If this continues, you may face cash flow issues in 6-12 months. I recommend cutting non-essential spending immediately.`;
+        else analysis = `You're cash flow positive by <strong>${formatCurrency(Math.abs(netBurn))}</strong>/month on average. Keep building reserves for downturns.`;
+        analysis += `<br><br>Check the <span class="nav-link" onclick="navTo('forecast')">Cash Forecast</span> for 30/60/90 day projections.`;
+        return { html: analysis, chips: [{ label: 'View forecast', query: 'Take me to cash forecast' }, { label: 'Detect leaks', query: 'Scan for expense leaks' }] };
+    }
+
+    if (/how.*doing|overall|overview|summary|business/.test(ql)) {
+        const pm = tR > 0 ? ((tR - tE) / tR * 100).toFixed(1) : '0';
+        const posMonths = monthly.filter(m => m.profit > 0).length;
+        return {
+            html: `Here's your business overview:<br><br>
+            • <strong>Revenue:</strong> ${formatCurrency(tR)}<br>
+            • <strong>Expenses:</strong> ${formatCurrency(tE)}<br>
+            • <strong>Net Profit:</strong> ${formatCurrency(tR - tE)}<br>
+            • <strong>Margin:</strong> ${pm}%<br>
+            • <strong>Positive months:</strong> ${posMonths}/${monthly.length}<br><br>
+            ${parseFloat(pm) > 20 ? 'Your business looks <strong style="color:var(--accent-emerald)">healthy</strong>!' : parseFloat(pm) > 10 ? 'Your business is <strong style="color:var(--accent-gold)">moderate</strong> — room for improvement.' : 'Your business is <strong style="color:var(--accent-rose)">at risk</strong> — take action soon.'}`,
+            chips: [
+                { label: 'Health Score', query: 'Take me to Health Score' },
+                { label: 'Improve my score', query: 'How can I improve my financial health?' },
+                { label: 'Detect leaks', query: 'Scan for expense leaks' }
+            ]
+        };
+    }
+
+    /* ===== INTENT: IMPROVE HEALTH ===== */
+    if (/improv.*health|improv.*score|better.*score|healthier/.test(ql)) {
+        const pm = tR > 0 ? ((tR - tE) / tR * 100) : 0;
+        const tips = [];
+        if (pm < 15) tips.push('Focus on increasing your profit margin above 15% by reducing top expense categories');
+        tips.push('Ensure expenses grow slower than revenue — review spending monthly');
+        tips.push('Maintain consistent positive cash flow — aim for 80%+ positive months');
+        tips.push('Build a 3-6 month cash reserve for unexpected downturns');
+        tips.push('Diversify revenue streams so no single source exceeds 50%');
+        return {
+            html: `Here are actionable steps to improve your financial health:<br><br>${tips.map((t, i) => `<strong>${i + 1}.</strong> ${t}`).join('<br>')}`,
+            chips: [{ label: 'Check my score', query: 'Take me to Health Score' }, { label: 'Cut costs', query: 'Suggest cost cutting strategies' }]
+        };
+    }
+
+    /* ===== FALLBACK ===== */
+    return {
+        html: `I can help with many things! Try asking me about:<br><br>
+        • <strong>Navigation:</strong> "Where do I upload data?", "Show me profit trends"<br>
+        • <strong>Analysis:</strong> "Why is profit down?", "Where am I overspending?"<br>
+        • <strong>Strategy:</strong> "How can I cut costs?", "Suggest growth ideas"<br>
+        • <strong>Features:</strong> "What is Health Score?", "How does leak detection work?"<br>
+        • <strong>Onboarding:</strong> "I'm new, where do I start?"<br><br>
+        ${hasData ? `Your current data shows ${formatCurrency(tR)} revenue and ${formatCurrency(tE)} expenses. Ask me anything about it!` : 'Upload your data to unlock personalized analysis!'}`,
+        chips: [
+            { label: 'What can you do?', query: 'What can you help me with?' },
+            { label: 'App features', query: 'What features does FinLens have?' },
+            { label: hasData ? 'How am I doing?' : 'Getting started', query: hasData ? 'How is my business doing overall?' : 'I am new, where do I start?' }
+        ]
+    };
+}
+
+/* PDF Section Option Toggle */
+document.addEventListener('click',function(e){const opt=e.target.closest('.pdf-opt');if(opt)opt.classList.toggle('selected');});
+function getSelectedPdfSections(){const s=[];document.querySelectorAll('.pdf-opt.selected').forEach(o=>s.push(o.dataset.sectionOpt));return s;}
+
+/* PDF */
+function generatePDFReport(){const btn=document.getElementById('genPdfBtn');if(!financialData.length){showToast('No data to export','error');return;}if(typeof window.jspdf==='undefined'){showToast('PDF library not loaded','error');return;}const selectedSections=getSelectedPdfSections();if(!selectedSections.length){showToast('Select at least one section','error');return;}btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Building Report...';document.getElementById('pdfProgress').classList.add('active');document.getElementById('pdfProgressBar').style.width='10%';
+setTimeout(()=>{try{const{jsPDF}=window.jspdf;const doc=new jsPDF('p','mm','a4');const tR=financialData.filter(d=>d.type==='Revenue').reduce((s,d)=>s+d.amount,0);const tE=financialData.filter(d=>d.type==='Expense').reduce((s,d)=>s+d.amount,0);const tP=tR-tE;const pm=tR>0?(tP/tR*100):0;const monthly=getMonthlyData();const ec=getCategoryData('Expense');const rc=getCategoryData('Revenue');document.getElementById('pdfProgressBar').style.width='20%';
+/* --- COVER PAGE --- */
+doc.setFillColor(12,14,20);doc.rect(0,0,210,297,'F');doc.setFillColor(52,211,153);doc.rect(0,0,210,4,'F');doc.setTextColor(52,211,153);doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text('FINLENS PRO',18,30);doc.setTextColor(240,242,248);doc.setFontSize(32);doc.setFont('helvetica','bold');doc.text('Financial Analysis',18,55);doc.text('Report',18,72);doc.setFillColor(52,211,153);doc.rect(18,80,50,2.5,'F');doc.setTextColor(136,145,168);doc.setFontSize(11);doc.setFont('helvetica','normal');doc.text('Generated: '+new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'}),18,95);doc.text('Data Period: '+(monthly.length?monthly[0].label+' - '+monthly[monthly.length-1].label:'N/A'),18,104);doc.text('Total Transactions: '+financialData.length,18,113);
+let ky=138;doc.setFillColor(24,28,40);doc.roundedRect(18,ky,174,56,4,4,'F');doc.setTextColor(136,145,168);doc.setFontSize(9);doc.text('TOTAL REVENUE',28,ky+14);doc.setTextColor(52,211,153);doc.setFontSize(18);doc.setFont('helvetica','bold');doc.text(formatFullCurrency(Math.round(tR)),28,ky+30);doc.setTextColor(136,145,168);doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text('TOTAL EXPENSES',82,ky+14);doc.setTextColor(251,113,133);doc.setFontSize(18);doc.setFont('helvetica','bold');doc.text(formatFullCurrency(Math.round(tE)),82,ky+30);doc.setTextColor(136,145,168);doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text('NET PROFIT',140,ky+14);doc.setTextColor(251,191,36);doc.setFontSize(18);doc.setFont('helvetica','bold');doc.text(formatFullCurrency(Math.round(tP)),140,ky+30);doc.setTextColor(136,145,168);doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text('PROFIT MARGIN',28,ky+42);doc.setTextColor(56,189,248);doc.setFontSize(14);doc.setFont('helvetica','bold');doc.text(pm.toFixed(1)+'%',28,ky+52);doc.setFontSize(8);doc.setTextColor(80,90,110);doc.text('Confidential - For internal use only',18,280);doc.text('Page 1',210-18,280,{align:'right'});document.getElementById('pdfProgressBar').style.width='35%';
+/* --- HELPERS --- */
+let y=20;function newPage(){doc.addPage();doc.setFillColor(12,14,20);doc.rect(0,0,210,297,'F');y=20;}
+function checkSpace(n){if(y+n>265)newPage();}
+function heading(t){checkSpace(20);doc.setFillColor(52,211,153);doc.rect(18,y,3,8,'F');doc.setTextColor(240,242,248);doc.setFontSize(13);doc.setFont('helvetica','bold');doc.text(t,26,y+6.5);y+=14;}
+function addKPIRow(l,v,c,x,w){doc.setFillColor(24,28,40);doc.roundedRect(x,y,w,22,3,3,'F');doc.setTextColor(136,145,168);doc.setFontSize(8);doc.setFont('helvetica','normal');doc.text(l,x+6,y+9);doc.setTextColor(c[0],c[1],c[2]);doc.setFontSize(14);doc.setFont('helvetica','bold');doc.text(v,x+6,y+18);}
+function addTable(h,b){checkSpace(40);doc.autoTable({startY:y,head:[h],body:b,margin:{left:18,right:18},headStyles:{fillColor:[30,35,48],textColor:[136,145,168],fontStyle:'bold',fontSize:9},bodyStyles:{fillColor:[24,28,40],textColor:[220,225,240],fontSize:9},alternateRowStyles:{fillColor:[28,32,46]},styles:{cellPadding:4,lineColor:[37,42,58],lineWidth:0.3}});y=doc.lastAutoTable.finalY+10;}
+function addFooter(){const pc=doc.internal.getNumberOfPages();for(let i=1;i<=pc;i++){doc.setPage(i);doc.setFillColor(20,22,30);doc.rect(0,282,210,15,'F');doc.setFillColor(52,211,153);doc.rect(0,282,210,0.5,'F');doc.setFontSize(8);doc.setTextColor(100,110,130);doc.setFont('helvetica','normal');doc.text('FinLens Report | Confidential',18,289);doc.text('Page '+i+' of '+pc,210-18,289,{align:'right'});}}
+function addParagraph(t){checkSpace(16);doc.setTextColor(180,185,200);doc.setFontSize(10);doc.setFont('helvetica','normal');const ls=doc.splitTextToSize(t,174);ls.forEach(l=>{checkSpace(6);doc.text(l,18,y);y+=5;});y+=4;}
+newPage();document.getElementById('pdfProgressBar').style.width='45%';
+/* --- EXECUTIVE SUMMARY --- */
+if(selectedSections.includes('summary')){heading('Executive Summary');const ms=pm>20?'strong':pm>10?'moderate':'weak';addParagraph('This report covers '+monthly.length+' months of financial data with '+financialData.length+' total transactions. Revenue totals '+formatFullCurrency(Math.round(tR))+' against expenses of '+formatFullCurrency(Math.round(tE))+', resulting in a net profit of '+formatFullCurrency(Math.round(tP))+'. The overall profit margin stands at '+pm.toFixed(1)+'%, which is '+ms+' compared to industry benchmarks. '+(ec.length>0?'The largest expense category is '+ec[0].category+' at '+formatFullCurrency(ec[0].amount)+'.':'')+(rc.length>0?' The top revenue source is '+rc[0].category+' at '+formatFullCurrency(rc[0].amount)+'.':''));checkSpace(30);doc.setFillColor(24,28,40);doc.roundedRect(18,y,174,28,4,4,'F');doc.setTextColor(52,211,153);doc.setFontSize(10);doc.setFont('helvetica','bold');doc.text('KEY INSIGHT',28,y+12);doc.setTextColor(200,205,220);doc.setFontSize(9);doc.setFont('helvetica','normal');const ins=pm>20?'Your business shows strong profitability. Focus on sustaining growth while maintaining expense discipline.':pm>10?'Profitability is moderate. Look for opportunities to boost margins through cost optimization or revenue diversification.':'Profit margins are tight. Immediate action recommended: review top expense categories and identify cost reduction opportunities.';doc.text(doc.splitTextToSize(ins,150),28,y+18);y+=38;document.getElementById('pdfProgressBar').style.width='55%';}
+/* --- MONTHLY BREAKDOWN --- */
+if(selectedSections.includes('monthly')){heading('Monthly Revenue & Expenses');addTable(['Month','Revenue','Expenses','Net Profit','Margin %'],monthly.map(m=>[m.label,formatFullCurrency(m.revenue),formatFullCurrency(m.expenses),formatFullCurrency(m.profit),(m.revenue>0?(m.profit/m.revenue*100).toFixed(1):'0')+'%']));const bm=monthly.reduce((a,b)=>b.profit>a.profit?b:a,monthly[0]);const wm=monthly.reduce((a,b)=>b.profit<a.profit?b:a,monthly[0]);checkSpace(20);doc.setFillColor(24,28,40);doc.roundedRect(18,y,174,20,3,3,'F');doc.setTextColor(52,211,153);doc.setFontSize(9);doc.text('Best Month: '+bm.label+' ('+formatFullCurrency(bm.profit)+')',28,y+9);doc.setTextColor(251,113,133);doc.text('Worst Month: '+wm.label+' ('+formatFullCurrency(wm.profit)+')',110,y+9);doc.setTextColor(56,189,248);doc.text('Avg Monthly Profit: '+formatFullCurrency(Math.round(monthly.reduce((s,m)=>s+m.profit,0)/monthly.length)),28,y+17);y+=28;document.getElementById('pdfProgressBar').style.width='65%';}
+/* --- CATEGORY ANALYSIS --- */
+if(selectedSections.includes('categories')){heading('Expense Category Breakdown');addTable(['Category','Amount','% of Total'],ec.map(c=>[c.category,formatFullCurrency(c.amount),tE>0?(c.amount/tE*100).toFixed(1)+'%':'0%']));heading('Revenue Category Breakdown');addTable(['Category','Amount','% of Total'],rc.map(c=>[c.category,formatFullCurrency(c.amount),tR>0?(c.amount/tR*100).toFixed(1)+'%':'0%']));document.getElementById('pdfProgressBar').style.width='72%';}
+/* --- CASH FLOW --- */
+if(selectedSections.includes('cashflow')){heading('Cash Flow Summary');checkSpace(36);addKPIRow('Total Inflows',formatFullCurrency(Math.round(tR)),[52,211,153],18,54);addKPIRow('Total Outflows',formatFullCurrency(Math.round(tE)),[251,113,133],78,54);addKPIRow('Net Position',formatFullCurrency(Math.round(tP)),[251,191,36],138,54);y+=28;addTable(['Month','Inflows','Outflows','Net Flow'],monthly.map(m=>[m.label,formatFullCurrency(m.revenue),formatFullCurrency(m.expenses),formatFullCurrency(m.profit)]));const pm2=monthly.filter(m=>m.profit>0).length;addParagraph('Positive cash flow months: '+pm2+' out of '+monthly.length+' ('+((pm2/monthly.length)*100).toFixed(0)+'%). '+(pm2<monthly.length*0.8?'Warning: Less than 80% of months show positive cash flow, indicating potential liquidity concerns.':'Healthy cash flow consistency.'));document.getElementById('pdfProgressBar').style.width='78%';}
+/* --- HEALTH SCORE --- */
+if(selectedSections.includes('health')){heading('Financial Health Score');if(monthly.length>=2){const htR=monthly.reduce((s,x)=>s+x.revenue,0),htE=monthly.reduce((s,x)=>s+x.expenses,0),hpm=htR>0?(htR-htE)/htR:0;let pmS=Math.max(0,Math.min(25,hpm*100));const mid=Math.floor(monthly.length/2);const fR=monthly.slice(0,mid).reduce((s,x)=>s+x.revenue,0)||1;const sR=monthly.slice(mid).reduce((s,x)=>s+x.revenue,0);const rg=(sR-fR)/fR;let gS=Math.max(0,Math.min(25,rg*50+12.5));const fE=monthly.slice(0,mid).reduce((s,x)=>s+x.expenses,0)||1;const sE=monthly.slice(mid).reduce((s,x)=>s+x.expenses,0);const eg=(sE-fE)/fE;let eS=Math.max(0,Math.min(25,25-(eg-rg)*100));const pos=monthly.filter(x=>x.profit>0).length;let stS=(pos/monthly.length)*25;const ts=Math.round(pmS+gS+eS+stS);checkSpace(50);doc.setFillColor(24,28,40);doc.roundedRect(18,y,174,42,4,4,'F');const sc=ts>75?[52,211,153]:ts>40?[251,191,36]:[251,113,133];doc.setTextColor(sc[0],sc[1],sc[2]);doc.setFontSize(36);doc.setFont('helvetica','bold');doc.text(ts+'/100',28,y+22);doc.setTextColor(136,145,168);doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text('Profitability: '+Math.round(pmS)+'/25',28,y+34);doc.text('Growth: '+Math.round(gS)+'/25',80,y+34);doc.text('Expense Ctrl: '+Math.round(eS)+'/25',130,y+34);doc.text('Stability: '+Math.round(stS)+'/25',28,y+42);doc.setTextColor(sc[0],sc[1],sc[2]);doc.setFontSize(11);doc.setFont('helvetica','bold');doc.text(ts>75?'Low Risk':ts>40?'Medium Risk':'High Risk',130,y+22);y+=50;const str=[],wk=[];if(hpm>0.2)str.push('Strong profit margin ('+((hpm)*100).toFixed(1)+'%)');else wk.push('Low profit margin ('+((hpm)*100).toFixed(1)+'%)');if(rg>0.05)str.push('Revenue growing ('+(rg*100).toFixed(1)+'%)');else wk.push('Revenue stagnant/declining');if(eg<rg)str.push('Good expense control');else wk.push('Expenses growing faster than revenue');if(str.length){checkSpace(20);doc.setTextColor(52,211,153);doc.setFontSize(10);doc.setFont('helvetica','bold');doc.text('Strengths:',18,y);y+=6;doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(180,185,200);str.forEach(s=>{doc.text('  + '+s,18,y);y+=5;});y+=4;}if(wk.length){checkSpace(20);doc.setTextColor(251,113,133);doc.setFontSize(10);doc.setFont('helvetica','bold');doc.text('Weaknesses:',18,y);y+=6;doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(180,185,200);wk.forEach(w=>{doc.text('  - '+w,18,y);y+=5;});y+=4;}}else{addParagraph('Insufficient data for health score calculation (minimum 2 months required).');}document.getElementById('pdfProgressBar').style.width='84%';}
+/* --- CASH FORECAST --- */
+if(selectedSections.includes('forecast')){heading('30/60/90 Day Cash Forecast');if(monthly.length>=2){const aR=monthly.reduce((s,x)=>s+x.revenue,0)/monthly.length;const aE=monthly.reduce((s,x)=>s+x.expenses,0)/monthly.length;const lc=monthly[monthly.length-1].profit;const d30=lc+(aR-aE);const d60=d30+(aR-aE);const d90=d60+(aR-aE);checkSpace(36);addKPIRow('30-Day',formatFullCurrency(Math.round(d30)),d30>=0?[52,211,153]:[251,113,133],18,54);addKPIRow('60-Day',formatFullCurrency(Math.round(d60)),d60>=0?[52,211,153]:[251,113,133],78,54);addKPIRow('90-Day',formatFullCurrency(Math.round(d90)),d90>=0?[52,211,153]:[251,113,133],138,54);y+=28;addTable(['Period','Projected Cash','Status'],[['Current',formatFullCurrency(lc),lc>=0?'Positive':'Negative'],['+30 Days',formatFullCurrency(Math.round(d30)),d30>=0?'Positive':'Negative'],['+60 Days',formatFullCurrency(Math.round(d60)),d60>=0?'Positive':'Negative'],['+90 Days',formatFullCurrency(Math.round(d90)),d90>=0?'Positive':'Negative']]);if(d90<0)addParagraph('ALERT: Cash flow is projected to go negative within 90 days. Consider immediate cost reduction measures.');if(aE>aR)addParagraph('WARNING: Average monthly expenses exceed revenue. This trajectory is unsustainable without intervention.');}else{addParagraph('Insufficient data for forecast (minimum 2 months required).');}document.getElementById('pdfProgressBar').style.width='88%';}
+/* --- LEAK DETECTION --- */
+if(selectedSections.includes('leaks')){heading('Expense Leak Detection');const li=[];if(monthly.length>=2){const aE=monthly.reduce((s,x)=>s+x.expenses,0)/monthly.length;const lE=monthly[monthly.length-1].expenses;if(lE>aE*1.5)li.push(['Spending Spike','Last month ('+formatCurrency(lE)+') was '+(((lE/aE)-1)*100).toFixed(0)+'% above average','HIGH']);}const rec={};financialData.filter(d=>d.type==='Expense').forEach(d=>{const k=d.category+'_'+d.amount;if(!rec[k])rec[k]={cat:d.category,amt:d.amount,n:0};rec[k].n++;});Object.values(rec).filter(r=>r.n>=3).forEach(r=>{li.push(['Recurring: '+formatCurrency(r.amt)+' x'+r.n,'"'+r.cat+'" appears '+r.n+' times','REVIEW']);});if(ec.length>0&&tE>0){const tp=(ec[0].amount/tE*100).toFixed(1);if(tp>40)li.push(['Category Overspend','"'+ec[0].category+'" = '+tp+'% of expenses','HIGH']);}if(li.length){addTable(['Issue','Detail','Severity'],li);}else{addParagraph('No major expense leaks detected. Your spending patterns appear healthy.');}document.getElementById('pdfProgressBar').style.width='92%';}
+/* --- BENCHMARKS --- */
+if(selectedSections.includes('benchmark')){heading('Industry Benchmark Comparison');const ind=IND[document.getElementById('industrySelect').value];const mm=tR>0?((tR-tE)/tR*100):0;const mk=ec.find(c=>/marketing|advertis/i.test(c.category));const sl=ec.find(c=>/salary|payroll|wage/i.test(c.category));const mmk=mk&&tE>0?(mk.amount/tE*100):0;const msl=sl&&tE>0?(sl.amount/tE*100):0;let mg=0;if(monthly.length>1&&monthly[0].revenue>0)mg=((monthly[monthly.length-1].revenue-monthly[0].revenue)/monthly[0].revenue*100);addTable(['Metric','Your Value','Industry Avg ('+ind.name+')','Status'],[['Profit Margin %',mm.toFixed(1)+'%',ind.pm+'%',mm>=ind.pm?'Above':'Below'],['Revenue Growth %',mg.toFixed(1)+'%',ind.rg+'%',mg>=ind.rg?'Above':'Below'],['Marketing %',mmk.toFixed(1)+'%',ind.mk+'%',mmk<=ind.mk?'Good':'High'],['Salaries %',msl.toFixed(1)+'%',ind.sl+'%',msl<=ind.sl?'Good':'High']]);addParagraph(mm>ind.pm?'Your profit margin exceeds the '+ind.name+' industry average of '+ind.pm+'%. This is a strong competitive position.':'Your profit margin of '+mm.toFixed(1)+'% is below the '+ind.name+' industry average of '+ind.pm+'%. Consider strategies to improve profitability.');document.getElementById('pdfProgressBar').style.width='98%';}
+addFooter();document.getElementById('pdfProgressBar').style.width='100%';const safeName='FinLens_Financial_Report_'+new Date().toISOString().slice(0,10)+'.pdf';const pdfArrayBuffer=doc.output('arraybuffer');const blob=new Blob([pdfArrayBuffer],{type:'application/pdf'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=safeName;a.click();document.getElementById('downloadLinkBox').classList.add('active');const dlLink=document.getElementById('downloadLink');dlLink.href=url;dlLink.download=safeName;dlLink.onclick=function(e){e.preventDefault();const freshUrl=URL.createObjectURL(blob);const freshA=document.createElement('a');freshA.href=freshUrl;freshA.download=safeName;freshA.click();setTimeout(()=>URL.revokeObjectURL(freshUrl),10000);};showToast('PDF report generated successfully!','success');btn.disabled=false;btn.innerHTML='<i class="fas fa-file-download"></i> Generate and Download PDF';setTimeout(()=>{document.getElementById('pdfProgress').classList.remove('active');document.getElementById('pdfProgressBar').style.width='0';},1000);
+}catch(err){console.error(err);showToast('PDF generation error: '+err.message,'error');btn.disabled=false;btn.innerHTML='<i class="fas fa-file-download"></i> Generate and Download PDF';document.getElementById('pdfProgress').classList.remove('active');}},300);}
+
+/* ===== GUIDED WALKTHROUGH / TOUR SYSTEM ===== */
+const tourSteps=[
+{target:'[data-tour="1"]',title:'Upload Your Data',desc:'Start by uploading your CSV or Excel financial data file here. FinLens will auto-detect columns, classify revenue vs expenses, and populate all dashboards instantly.',position:'right'},
+{target:'[data-tour="0"]',title:'Dashboard Overview',desc:'After uploading data, the Dashboard shows your KPIs at a glance: total revenue, expenses, net profit, and profit margin with visual charts.',position:'right'},
+{target:'[data-tour="2"]',title:'Revenue & Expenses',desc:'Dive deeper into monthly revenue and expense breakdowns with bar charts and a side-by-side comparison view.',position:'right'},
+{target:'[data-tour="3"]',title:'Profit Trends',desc:'Track your net profit trajectory over time, view margin percentages, and see cumulative profit growth.',position:'right'},
+{target:'[data-tour="4"]',title:'Category Analysis',desc:'Explore expense and revenue categories with doughnut charts and detailed percentage breakdowns.',position:'right'},
+{target:'[data-tour="5"]',title:'Cash Flow',desc:'Visualize cash inflows vs outflows and track your net cash position month by month.',position:'right'},
+{target:'[data-tour="6"]',title:'Health Score',desc:'Get an overall financial fitness score (0-100) based on profitability, growth, expense control, and stability.',position:'right'},
+{target:'[data-tour="7"]',title:'AI CFO Assistant',desc:'Chat with an AI CFO! Ask questions about your finances, get navigation help, or request business insights anytime.',position:'right'},
+{target:'[data-tour="8"]',title:'Cash Forecast',desc:'View 30/60/90 day cash projections based on your trends, with risk alerts for potential shortfalls.',position:'right'},
+{target:'[data-tour="9"]',title:'Leak Detection',desc:'Automatically detect spending spikes, recurring charges, and category overspends that may be draining your budget.',position:'right'},
+{target:'[data-tour="10"]',title:'Benchmarks',desc:'Compare your profit margins and expense ratios against industry averages for SaaS, Retail, Services, and Manufacturing.',position:'right'},
+{target:'[data-tour="11"]',title:'PDF Report',desc:'Generate and download a comprehensive PDF report with all your financial analysis. Select which sections to include!',position:'right'}
+];
+let currentTourStep=-1;let tourOverlay=null;let tourHighlight=null;let tourPopup=null;
+
+function startTour(){currentTourStep=0;if(!tourOverlay){tourOverlay=document.createElement('div');tourOverlay.className='tour-overlay';document.body.appendChild(tourOverlay);}tourOverlay.classList.add('active');showTourStep();}
+
+function showTourStep(){if(currentTourStep<0||currentTourStep>=tourSteps.length){endTour();return;}
+const step=tourSteps[currentTourStep];const targetEl=document.querySelector(step.target);if(!targetEl){endTour();return;}
+/* Scroll sidebar to make target visible */
+const sidebar=document.getElementById('sidebar');const elRect=targetEl.getBoundingClientRect();const sidebarRect=sidebar.getBoundingClientRect();if(elRect.top<sidebarRect.top||elRect.bottom>sidebarRect.bottom){targetEl.scrollIntoView({behavior:'smooth',block:'center'});}
+/* Highlight */
+if(tourHighlight)tourHighlight.remove();tourHighlight=document.createElement('div');tourHighlight.className='tour-highlight';const r=targetEl.getBoundingClientRect();tourHighlight.style.top=(r.top-4)+'px';tourHighlight.style.left=(r.left-4)+'px';tourHighlight.style.width=(r.width+8)+'px';tourHighlight.style.height=(r.height+8)+'px';document.body.appendChild(tourHighlight);
+/* Popup */
+if(tourPopup)tourPopup.remove();tourPopup=document.createElement('div');tourPopup.className='tour-popup';
+const dots=tourSteps.map((_,i)=>'<div class="tour-dot '+(i===currentTourStep?'active':'')+'"></div>').join('');
+tourPopup.innerHTML='<h3><i class="fas fa-lightbulb"></i> '+step.title+'</h3><p>'+step.desc+'</p><div class="tour-steps">'+dots+'</div><div class="tour-nav">'+(currentTourStep>0?'<button class="tour-btn tour-btn-prev" onclick="prevTourStep()"><i class="fas fa-arrow-left"></i> Back</button>':'<div></div>')+'<div style="display:flex;gap:8px"><button class="tour-btn tour-btn-skip" onclick="endTour()">Skip Tour</button><button class="tour-btn tour-btn-next" onclick="nextTourStep()">'+(currentTourStep<tourSteps.length-1?'Next <i class="fas fa-arrow-right"></i>':'Finish <i class="fas fa-check"></i>')+'</button></div></div>';
+/* Position popup */
+let popupLeft=r.right+16;let popupTop=r.top-20;if(popupLeft+380>window.innerWidth){popupLeft=Math.max(10,r.left-380-16);}
+if(popupTop+250>window.innerHeight)popupTop=window.innerHeight-260;if(popupTop<10)popupTop=10;
+tourPopup.style.left=popupLeft+'px';tourPopup.style.top=popupTop+'px';document.body.appendChild(tourPopup);}
+
+function nextTourStep(){currentTourStep++;if(currentTourStep>=tourSteps.length){endTour();showToast('Tour complete! Hover over sidebar items anytime for navigation tips.','info');}else{showTourStep();}}
+function prevTourStep(){if(currentTourStep>0){currentTourStep--;showTourStep();}}
+function endTour(){currentTourStep=-1;if(tourOverlay)tourOverlay.classList.remove('active');if(tourHighlight){tourHighlight.remove();tourHighlight=null;}if(tourPopup){tourPopup.remove();tourPopup=null;}localStorage.setItem('finlens_tour_done','1');}
+
+/* Auto-start tour for first-time users */
+window.addEventListener('DOMContentLoaded',function(){if(!localStorage.getItem('finlens_tour_done')){setTimeout(startTour,1200);}});
+
+/* INIT */
+function refreshAll(){updateKPIs();renderSectionCharts('dashboard');}
+function handleResize(){document.getElementById('mobileToggle').style.display=window.innerWidth<=1024?'block':'none';}
+window.addEventListener('resize',handleResize);
+
+/* Observe when assistant section becomes active to init chat */
+const observer = new MutationObserver(() => {
+    const panel = document.getElementById('section-assistant');
+    if (panel && panel.classList.contains('active')) initChat();
+});
+observer.observe(document.getElementById('section-assistant'), { attributes: true, attributeFilter: ['class'] });
+
+window.addEventListener('DOMContentLoaded', handleResize);
+
+/* ===== Dynamic Tooltip Positioning (fixed position, not clipped by sidebar overflow) ===== */
+(function(){
+    let activeTooltip = null;
+    let activeNavItem = null;
+    let hideTimeout = null;
+    const tooltipMap = new Map(); // navItem -> tooltip
+
+    // Move all tooltips from inside the sidebar to the body so they are never clipped
+    document.querySelectorAll('.nav-item').forEach(function(navItem) {
+        const tooltip = navItem.querySelector('.nav-tooltip');
+        if (tooltip) {
+            tooltipMap.set(navItem, tooltip);
+            document.body.appendChild(tooltip);
+        }
+    });
+
+    function positionTooltip(navItem, tooltip) {
+        const rect = navItem.getBoundingClientRect();
+        const gap = 14;
+        let left = rect.right + gap;
+        let top = rect.top + rect.height / 2;
+
+        // If tooltip would go off-screen right, position it to the left
+        const tooltipWidth = tooltip.offsetWidth || 300;
+        if (left + tooltipWidth > window.innerWidth - 16) {
+            left = rect.left - tooltipWidth - gap;
+        }
+
+        // Ensure tooltip doesn't go below/above viewport
+        const tooltipHeight = tooltip.offsetHeight || 150;
+        if (top + tooltipHeight / 2 > window.innerHeight - 16) {
+            top = window.innerHeight - 16 - tooltipHeight / 2;
+        }
+        if (top - tooltipHeight / 2 < 16) {
+            top = 16 + tooltipHeight / 2;
+        }
+
+        tooltip.style.left = left + 'px';
+        tooltip.style.top = top + 'px';
+
+        // Reposition the arrow pointer to align with the nav item
+        const arrowEl = tooltip.querySelector('.tooltip-arrow');
+        if (arrowEl) {
+            const arrowTop = rect.top + rect.height / 2 - top;
+            arrowEl.style.top = arrowTop + 'px';
+            // Arrow on left or right side
+            if (left > rect.right) {
+                arrowEl.style.left = '-7px';
+                arrowEl.style.right = '';
+                arrowEl.style.transform = 'translateY(-50%) rotate(45deg)';
+            } else {
+                arrowEl.style.right = '-7px';
+                arrowEl.style.left = '';
+                arrowEl.style.transform = 'translateY(-50%) rotate(-135deg)';
+            }
+        }
+    }
+
+    function showTooltip(navItem) {
+        clearTimeout(hideTimeout);
+        const tooltip = tooltipMap.get(navItem);
+        if (!tooltip) return;
+
+        // Hide any currently active tooltip
+        if (activeTooltip && activeTooltip !== tooltip) {
+            activeTooltip.classList.remove('visible');
+        }
+
+        activeTooltip = tooltip;
+        activeNavItem = navItem;
+        tooltip.style.display = 'block';
+        positionTooltip(navItem, tooltip);
+        tooltip.classList.add('visible');
+    }
+
+    function hideTooltipDelayed() {
+        hideTimeout = setTimeout(function() {
+            if (activeTooltip) {
+                activeTooltip.classList.remove('visible');
+                activeTooltip = null;
+                activeNavItem = null;
+            }
+        }, 180);
+    }
+
+    function cancelHide() {
+        clearTimeout(hideTimeout);
+    }
+
+    // Attach hover events to all nav items with tooltips
+    tooltipMap.forEach(function(tooltip, navItem) {
+        navItem.addEventListener('mouseenter', function() { showTooltip(navItem); });
+        navItem.addEventListener('mouseleave', function() { hideTooltipDelayed(); });
+
+        // Keep tooltip visible when hovering over the tooltip itself
+        tooltip.addEventListener('mouseenter', cancelHide);
+        tooltip.addEventListener('mouseleave', hideTooltipDelayed);
+    });
+
+    // Reposition on scroll and resize
+    var sidebarNav = document.querySelector('.sidebar nav');
+    if (sidebarNav) {
+        sidebarNav.addEventListener('scroll', function() {
+            if (activeNavItem && activeTooltip) {
+                positionTooltip(activeNavItem, activeTooltip);
+            }
+        });
+    }
+    window.addEventListener('resize', function() {
+        if (activeNavItem && activeTooltip) {
+            positionTooltip(activeNavItem, activeTooltip);
+        }
+    });
+
+    // Hide tooltip when clicking a nav item
+    document.querySelectorAll('.nav-item').forEach(function(navItem) {
+        navItem.addEventListener('click', function() {
+            if (activeTooltip) {
+                activeTooltip.classList.remove('visible');
+                activeTooltip = null;
+                activeNavItem = null;
+            }
+        });
+    });
+})();
+</script>
+</body>
+</html>
